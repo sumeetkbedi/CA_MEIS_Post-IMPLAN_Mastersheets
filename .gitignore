@@ -44,3 +44,5 @@ vignettes/*.pdf
 # output folder
 /output/
 
+# activity sheets files in data/raw folder
+/data/raw/implan_results/
