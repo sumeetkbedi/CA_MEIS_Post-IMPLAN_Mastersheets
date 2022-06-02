@@ -38,5 +38,11 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
+# data/temp folder
+/data/temp/
+
+# output folder
+/output/
+
 # activity sheets files in data/raw folder
 /data/raw/activity_sheets/
