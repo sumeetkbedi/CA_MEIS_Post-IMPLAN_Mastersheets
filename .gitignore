@@ -45,4 +45,4 @@ vignettes/*.pdf
 /output/
 
 # activity sheets files in data/raw folder
-/data/raw/activity_sheets/
+/data/raw/implan_results/
