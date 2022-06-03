@@ -1,22 +1,26 @@
-##MASTER CODE FOR WRANGLING DATA##
+## MASTER CODE FOR WRANGLING IMPLAN RESULTS TOGETHER ##
 
-## Clear Environment##
+## Clear Environment ##
 rm(list = ls(all.names = TRUE))
 
-##Set Working Directory##
+## Set Working Directory ##
 
 
-##Load Libraries##
-library(dplyr)
-library(httr)
-library(jsonlite)
+## Load Libraries ##
 library(openxlsx)
 library(readxl) 
 library(tidyverse) 
 
-##Load Parameters##
+## Load Parameters ##
 source("parameters.R")
 
-##STEP 1: Combine all the IMPLAN results for county and district into 2 respective files##
+# Load function scripts ##
+source("src/f_list.R")
+source("src/geo_list.R")
+source("src/f_index.R")
+source("src/result_loop.R")
+
+
+## STEP 1: Combine all the IMPLAN results for county and district into 2 respective files ##
 source("src/combine_county_results.R")
 source("src/combine_district_results.R")
