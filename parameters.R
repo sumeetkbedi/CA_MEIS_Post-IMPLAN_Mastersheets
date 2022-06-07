@@ -18,5 +18,5 @@ emp_indus_path = file.path("emp_industries")
 output_indus_path = file.path("output_industries")
 tax_res_path = file.path("tax_results")
 
-excel_pattern = "*.xlsx"
+xlsx_pat = "*.xlsx"
 inv = "Inverse"

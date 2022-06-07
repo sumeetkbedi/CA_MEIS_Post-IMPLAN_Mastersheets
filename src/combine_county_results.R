@@ -2,38 +2,63 @@
 
 ## ECONOMIC INDICATORS BY IMPACT ##
 # Read in a list of all these files based on their directory
-econ_indic_files <- f_list(file.path(implan_res_c, econ_indic_path), excel_pattern)
+econ_indic_files <- list.files(file.path(implan_res_c, econ_indic_path), xlsx_pat)
 
 # Create a list of county names as well
-counties <- geo_list(paste(year, ".+"), "", econ_indic_files)
+counties <- gsub(paste(year, ".+"), "", econ_indic_files)
 
 # Define indices to find the "inverse" and "regular" model data sheets
-inv_ind <- f_index(inv, econ_indic_files)
+inv_ind <- grep(inv, econ_indic_files)
 reg_ind <- (1:length(econ_indic_files))[-inv_ind]
 
-# Define null variables to use in for loop
-
+# Define null variables as empty dataframes to write data into from the for loop
 inv_temp <- NULL
 reg_temp <- NULL
 
 # Run result_loop function to generate "regular" and "inverse" dataframes for economic indicators
-result_loop(reg_ind, reg_temp, county, counties, file.path(implan_res_c, econ_indic_files))
+reg_temp <- result_loop(reg_ind, reg_temp, counties, implan_res_c, econ_indic_path, econ_indic_files)
+inv_temp <- result_loop(inv_ind, inv_temp, counties, implan_res_c, econ_indic_path, econ_indic_files)
 
+# Change the "NAs" in the dataframes to be "Total"
+reg_temp$Impact[is.na(reg_temp$Impact)] <- "Total"
+inv_temp$Impact[is.na(inv_temp$Impact)] <- "Total"
 
+# Merge the 2 dataframes into 1, and turn NA values into 0's
+econ_indic_counties <- merge(reg_temp, inv_temp, by = c("geo", "Impact"), all = TRUE) 
+econ_indic_counties[is.na(econ_indic_counties)] <- 0
 
+# Rename existing columns, and add in new ones
+colnames(econ_indic_counties) <- c("county", "impact", "employment", "labor_income", "value_added", "output",
+                                   "in_employment", "in_labor_income", "in_value_added", "in_output")
+econ_indic_counties <- econ_indic_counties %>%
+  mutate(total_employment = employment + in_employment, total_labor_income = labor_income + in_labor_income,
+         total_value_added = value_added + in_value_added, total_output = output + in_output)
 
+# Write into an Excel file - ALL DONE!
+write.xlsx(econ_indic_counties, file.path(temp_path, "econ_indicators_by_county.xlsx"))
 
 
 ## TAX RESULTS ##
 # Read in a list of all these files based on their directory
-tax_res_files <- f_list(file.path(implan_res_c, tax_res_path), excel_pattern)
+tax_res_files <- list.files(file.path(implan_res_c, tax_res_path), xlsx_pat)
 
 # Create a list of county names as well
-counties <- geo_list(paste(year, ".+"), "", tax_res_files)
+counties <- gsub(paste(year, ".+"), "", tax_res_files)
 
 # Define indices to find the "inverse" and "regular" model data sheets
-inv_ind <- f_index(inv, tax_res_files)
+inv_ind <- grep(inv, tax_res_files)
 reg_ind <- (1:length(tax_res_files))[-inv_ind]
+
+# Define null variables as empty dataframes to write data into from the for loop
+inv_temp2 <- NULL
+reg_temp2 <- NULL
+
+# Run result_loop function to generate "regular" and "inverse" dataframes for economic indicators
+reg_temp2 <- result_loop(reg_ind, reg_temp2, counties, implan_res_c, econ_indic_path, econ_indic_files)
+inv_temp2 <- result_loop(inv_ind, inv_temp2, counties, implan_res_c, econ_indic_path, econ_indic_files)
+
+
+
 
 
 
@@ -41,14 +66,24 @@ reg_ind <- (1:length(tax_res_files))[-inv_ind]
 
 ## INDUSTRIES BY IMPACT ##
 # Read in a list of all these files based on their directory
-output_indus_files <- f_list(file.path(implan_res_c, output_indus_path), excel_pattern)
+output_indus_files <- list.files(file.path(implan_res_c, output_indus_path), xlsx_pat)
 
 # Create a list of county names as well
-counties <- geo_list(paste(year, ".+"), "", output_indus_files)
+counties <- gsub(paste(year, ".+"), "", output_indus_files)
 
 # Define indices to find the "inverse" and "regular" model data sheets
-inv_ind <- f_index(inv, output_indus_files)
+inv_ind <- grep(inv, output_indus_files)
 reg_ind <- (1:length(output_indus_files))[-inv_ind]
+
+# Define null variables as empty dataframes to write data into from the for loop
+inv_temp3 <- NULL
+reg_temp3 <- NULL
+
+# Run result_loop function to generate "regular" and "inverse" dataframes for economic indicators
+reg_temp3 <- result_loop(reg_ind, reg_temp3, counties, implan_res_c, econ_indic_path, econ_indic_files)
+inv_temp3 <- result_loop(inv_ind, inv_temp3, counties, implan_res_c, econ_indic_path, econ_indic_files)
+
+
 
 
 
@@ -57,12 +92,19 @@ reg_ind <- (1:length(output_indus_files))[-inv_ind]
 
 ## EMPLOYMENT INDUSTRIES BY IMPACT ##
 # Read in a list of all these files based on their directory
-emp_indus_files <- f_list(file.path(implan_res_c, emp_indus_path), excel_pattern)
+emp_indus_files <- list.files(file.path(implan_res_c, emp_indus_path), xlsx_pat)
 
 # Create a list of county names as well
-counties <- geo_list(paste(year, ".+"), "", emp_indus_files)
+counties <- gsub(paste(year, ".+"), "", emp_indus_files)
 
 # Define indices to find the "inverse" and "regular" model data sheets
-inv_ind <- f_index(inv, emp_indus_files)
+inv_ind <- grep(inv, emp_indus_files)
 reg_ind <- (1:length(emp_indus_files))[-inv_ind]
 
+# Define null variables as empty dataframes to write data into from the for loop
+inv_temp4 <- NULL
+reg_temp4 <- NULL
+
+# Run result_loop function to generate "regular" and "inverse" dataframes for economic indicators
+reg_temp4 <- result_loop(reg_ind, reg_temp4, counties, implan_res_c, econ_indic_path, econ_indic_files)
+inv_temp4 <- result_loop(inv_ind, inv_temp4, counties, implan_res_c, econ_indic_path, econ_indic_files)

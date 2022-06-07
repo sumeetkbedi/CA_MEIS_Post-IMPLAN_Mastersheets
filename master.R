@@ -15,9 +15,6 @@ library(tidyverse)
 source("parameters.R")
 
 # Load function scripts ##
-source("src/f_list.R")
-source("src/geo_list.R")
-source("src/f_index.R")
 source("src/result_loop.R")
 
 
