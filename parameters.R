@@ -14,9 +14,9 @@ implan_res_c = file.path("data", "raw", "implan_results", "counties")
 implan_res_d = file.path("data", "raw", "implan_results", "districts")
 
 econ_indic_path = file.path("econ_indicators")
+tax_res_path = file.path("tax_results")
 emp_indus_path = file.path("emp_industries")
 output_indus_path = file.path("output_industries")
-tax_res_path = file.path("tax_results")
 
 xlsx_pat = "*.xlsx"
 inv = "Inverse"

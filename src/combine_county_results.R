@@ -38,6 +38,7 @@ econ_indic_counties <- econ_indic_counties %>%
 write.xlsx(econ_indic_counties, file.path(temp_path, "econ_indicators_by_county.xlsx"))
 
 
+
 ## TAX RESULTS ##
 # Read in a list of all these files based on their directory
 tax_res_files <- list.files(file.path(implan_res_c, tax_res_path), xlsx_pat)
@@ -53,14 +54,32 @@ reg_ind <- (1:length(tax_res_files))[-inv_ind]
 inv_temp2 <- NULL
 reg_temp2 <- NULL
 
-# Run result_loop function to generate "regular" and "inverse" dataframes for economic indicators
-reg_temp2 <- result_loop(reg_ind, reg_temp2, counties, implan_res_c, econ_indic_path, econ_indic_files)
-inv_temp2 <- result_loop(inv_ind, inv_temp2, counties, implan_res_c, econ_indic_path, econ_indic_files)
+# Run result_loop function to generate "regular" and "inverse" dataframes for tax results
+reg_temp2 <- result_loop(reg_ind, reg_temp2, counties, implan_res_c, tax_res_path, tax_res_files)
+inv_temp2 <- result_loop(inv_ind, inv_temp2, counties, implan_res_c, tax_res_path, tax_res_files)
 
+# Change the "NAs" in the dataframes to be "Total"
+reg_temp2$Impact[is.na(reg_temp2$Impact)] <- "Total"
+inv_temp2$Impact[is.na(inv_temp2$Impact)] <- "Total"
 
+# Merge the 2 dataframes into 1, and turn NA values into 0's
+tax_res_counties <- merge(reg_temp2, inv_temp2, by = c("geo", "Impact"), all = TRUE) 
+tax_res_counties[is.na(tax_res_counties)] <- 0
 
+# Rename existing columns, and add in new ones
+colnames(tax_res_counties) <- c("county", "impact", "sub_county_general", "sub_county_special_district", "county_rev", 
+                                "state", "federal", "reg_total", "in_sub_county_general", "in_sub_county_special_district", 
+                                "in_county_rev", "in_state", "in_federal", "in_total")
+tax_res_counties <- tax_res_counties %>%
+  mutate(total_sub_county_general = sub_county_general + in_sub_county_general, 
+         total_sub_county_special_district = sub_county_special_district + in_sub_county_special_district,
+         total_county_rev = county_rev + in_county_rev,
+         total_state = state + in_state,
+         total_federal = federal + in_federal,
+         total = reg_total + in_total)
 
-
+# Write into an Excel file - ALL DONE!
+write.xlsx(tax_res_counties, file.path(temp_path, "tax_results_by_county.xlsx"))
 
 
 
