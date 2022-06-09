@@ -20,3 +20,5 @@ output_indus_path = file.path("output_industries")
 
 xlsx_pat = "*.xlsx"
 inv = "Inverse"
+
+ind_disp = "Industry Display"
