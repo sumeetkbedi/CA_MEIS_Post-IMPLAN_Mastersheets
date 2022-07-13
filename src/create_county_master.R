@@ -20,7 +20,7 @@ usaspending <- usaspending %>%
   select(county, event_value_spending)
 usaspending$event_value_spending[is.na(usaspending$event_value_spending)] <- 0
 
-## 1.2: Now grab the SmartPay data by county #
+# 1.2: Now grab the SmartPay data by county #
 SmartPay <- read_xlsx("SmartPay_FY_2020.xlsx", sheet = 2) %>% 
   rename(County = ...1, smartpay_c = Total) %>%
   select("County", "smartpay_c")
