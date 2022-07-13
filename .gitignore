@@ -47,3 +47,5 @@ vignettes/*.pdf
 # activity sheets files in data/raw folder
 /data/raw/implan_results/
 
+# input data files in data/raw folder
+/data/raw/inputs/
