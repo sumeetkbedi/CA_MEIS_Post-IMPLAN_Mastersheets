@@ -38,7 +38,6 @@ econ_indic_counties <- econ_indic_counties %>%
 write.xlsx(econ_indic_counties, file.path(temp_path, paste0(year, "_econ_indicators_by_county.xlsx")))
 
 
-
 ## TAX RESULTS ##
 # Read in a list of all these files based on their directory
 tax_res_files <- list.files(file.path(implan_res_c, tax_res_path), xlsx_pat)
@@ -80,7 +79,6 @@ tax_res_counties <- tax_res_counties %>%
 
 # Write into an Excel file - ALL DONE!
 write.xlsx(tax_res_counties, file.path(temp_path, paste0(year, "_tax_results_by_county.xlsx")))
-
 
 
 ## INDUSTRIES BY IMPACT ##
@@ -128,7 +126,6 @@ output_indus_counties <- output_indus_counties %>%
 
 # Write into an Excel file - ALL DONE!
 write.xlsx(output_indus_counties, file.path(temp_path, paste0(year, "_industry_output_by_county.xlsx")))
-
 
 
 ## EMPLOYMENT INDUSTRIES BY IMPACT ##

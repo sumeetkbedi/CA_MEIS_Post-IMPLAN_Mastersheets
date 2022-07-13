@@ -22,3 +22,11 @@ xlsx_pat = "*.xlsx"
 inv = "Inverse"
 
 ind_disp = "Industry Display"
+
+# create_mastersheets variables #
+input_path = file.path("data", "raw", "inputs")
+c_file = "_cleaned_contracts.csv"
+g_file = "_cleaned_grants.csv"
+
+va_direct_pay_c = "_va_benefits_by_county.csv"
+va_direct_pay_d = "_va_benefits_by_district.csv"
