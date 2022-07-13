@@ -18,6 +18,10 @@ source("parameters.R")
 source("src/result_loop.R")
 
 
-## STEP 1: Combine all the IMPLAN results for county and district into their respective files based on data type (4 for county, 1 for district) ##
+## Combine all IMPLAN results for county and district into their respective files based on data type (4 for county, 1 for district) ##
 source("src/combine_county_results.R")
 source("src/combine_district_results.R")
+
+## Combine input and output data for counties and districts into their respective mastersheets
+source("src/create_county_master.R")
+source("src/create_district_master.R")
