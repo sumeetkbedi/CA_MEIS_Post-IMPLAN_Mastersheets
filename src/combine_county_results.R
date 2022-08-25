@@ -8,6 +8,7 @@ econ_indic_files <- list.files(file.path(implan_res_c, econ_indic_path), xlsx_pa
 counties <- gsub(year, "", 
                  gsub(econ_ind_xl, "",
                       gsub(inv, "", econ_indic_files)))
+counties <- str_trim(counties)
 
 # Define indices to find the "inverse" and "regular" model data sheets
 inv_ind <- grep(inv, econ_indic_files)
@@ -48,6 +49,7 @@ tax_res_files <- list.files(file.path(implan_res_c, tax_res_path), xlsx_pat)
 counties <- gsub(year, "", 
                  gsub(tax_res_xl, "",
                       gsub(inv, "", tax_res_files)))
+counties <- str_trim(counties)
 
 # Define indices to find the "inverse" and "regular" model data sheets
 inv_ind <- grep(inv, tax_res_files)
@@ -93,6 +95,7 @@ output_indus_files <- list.files(file.path(implan_res_c, output_indus_path), xls
 counties <- gsub(year, "", 
                  gsub(out_ind_xl, "",
                       gsub(inv, "", output_indus_files)))
+counties <- str_trim(counties)
 
 # Define indices to find the "inverse" and "regular" model data sheets
 inv_ind <- grep(inv, output_indus_files)
@@ -143,6 +146,7 @@ emp_indus_files <- list.files(file.path(implan_res_c, emp_indus_path), xlsx_pat)
 counties <- gsub(year, "", 
                  gsub(emp_ind_xl, "",
                       gsub(inv, "", emp_indus_files)))
+counties <- str_trim(counties)
 
 # Define indices to find the "inverse" and "regular" model data sheets
 inv_ind <- grep(inv, emp_indus_files)
@@ -164,6 +168,7 @@ inv_temp4 <- inv_temp4 %>%
 
 # Merge the 2 dataframes into 1, and turn NA values into 0's
 emp_indus_counties <- merge(reg_temp4, inv_temp4, by = c("geo", "Industry.Display"), all = TRUE)
+emp_indus_counties$Industry.Display[is.na(emp_indus_counties$Industry.Display)] <- "Total"
 emp_indus_counties[is.na(emp_indus_counties)] <- 0
 
 # Change column names, and make all the data as type numeric

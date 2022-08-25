@@ -46,14 +46,16 @@ InducedCountyEmp <- county_econ_indicators %>%
   select("county", "induced_county_employment")
 
 InducedCounty <- merge(InducedCountyEmp, InducedCountyOutput)
-InducedCounty$county <- gsub("^\\s+|\\s+$", "", InducedCounty$county)
 
 # Use the cd_proportion to distribute induced county output and employment to the districts, and aggregate the results to the respective districts
 InducedDistrict <- merge(InducedCounty, cd_proportion, by = "county")
-InducedDistrict <- InducedDistrict %>% mutate(induced_district_FTE = InducedDistrict$induced_county_employment*InducedDistrict$`%`,
-                                              induced_district_output = InducedDistrict$induced_county_output*InducedDistrict$`%`) %>%
+
+InducedDistrict <- InducedDistrict %>%
+  mutate(induced_district_FTE = InducedDistrict$induced_county_employment*InducedDistrict$`%`,
+         induced_district_output = InducedDistrict$induced_county_output*InducedDistrict$`%`) %>%
   select("district", "induced_district_FTE", "induced_district_output")
-InducedDistrict <- InducedDistrict %>% aggregate(by = list(InducedDistrict$district), FUN = sum) %>%
+InducedDistrict <- InducedDistrict %>%
+  aggregate(by = list(InducedDistrict$district), FUN = sum) %>%
   select("Group.1", "induced_district_FTE", "induced_district_output") %>%
   rename(district = Group.1)
 
@@ -74,12 +76,12 @@ IndirectCountyEmp <- county_econ_indicators %>%
   select("county", "indirect_county_employment")
 
 IndirectCounty <- merge(IndirectCountyEmp, IndirectCountyOutput)
-IndirectCounty$county <- gsub("^\\s+|\\s+$", "", IndirectCounty$county)
 
 # Merge in districts' direct output and employment data with counties' indirect results to calculate districts' indirect results
 IndirectCountyProp <- merge(IndirectCounty, cd_proportion, by = "county")
 
-DistrictD_CountyI <- Reduce(function(x,y) merge(x = x, y = y, by = "district"), list(DirectDistrictEmployment, DirectDistrictOutput, IndirectCountyProp))
+DistrictD_CountyI <- Reduce(function(x,y) merge(x = x, y = y, by = "district"),
+                            list(DirectDistrictEmployment, DirectDistrictOutput, IndirectCountyProp))
 DistrictD_CountyI <- DistrictD_CountyI %>%
   relocate(county, .before = district) %>%
   relocate('%', .after = district) %>%
@@ -135,8 +137,7 @@ DistrictOutputs <- DistrictOutputs %>%
   relocate(induced_district_FTE, .after = indirect_district_FTE)
 DistrictOutputs <- DistrictOutputs %>%
   mutate(total_district_output = direct_district_output + indirect_district_output + induced_district_output,
-         total_district_FTE = direct_district_FTE + indirect_district_FTE + induced_district_FTE)
-DistrictOutputs <- DistrictOutputs %>%
+         total_district_FTE = direct_district_FTE + indirect_district_FTE + induced_district_FTE) %>%
   relocate(total_district_output, .before = direct_district_FTE)
 
 ## Write into file - all done!

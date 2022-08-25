@@ -8,6 +8,7 @@ econ_indic_files <- list.files(file.path(implan_res_d, econ_indic_path), xlsx_pa
 districts <- gsub(year, "", 
                  gsub(econ_ind_xl, "",
                       gsub(inv, "", econ_indic_files)))
+districts <- str_trim(districts)
 
 # Define index to find the "regular" model data sheet
 reg_ind <- (1:length(econ_indic_files))

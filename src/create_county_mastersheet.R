@@ -1,13 +1,15 @@
-## CODE FOR CREATING COUNTY INPUT-OUTPUT MASTERSHEET ##
+## CODE FOR CREATING COUNTY INPUT-OUTPUT MULTI-SHEET MASTER EXCEL FILE ##
 
 ## PART 1: INPUT DATA ##
 # 1.1: Start with USAspending - read in cleaned contracts and grants data #
-contracts <- read.csv(file.path(input_path, paste0(f_year, c_file)))
-grants <- read.csv(file.path(input_path, paste0(f_year, g_file)))
+contracts <- read.csv(file.path(input_path, paste0(f_year, c_file))) %>%
+  filter(awarding_agency_name != "DEPARTMENT OF ENERGY (DOE)")
+grants <- read.csv(file.path(input_path, paste0(f_year, g_file))) %>%
+  filter(awarding_agency_name != "DEPARTMENT OF ENERGY (DOE)")
 
 # Aggregate the dataframes by county, rename columns, and then bring the dataframes together. Keep the usaspending total
-contracts <- aggregate(contracts$federal_action_obligation, by = list(contracts$recipient_county_name), FUN = sum)
-grants <- aggregate(grants$federal_action_obligation, by = list(grants$recipient_county_name), FUN = sum)
+contracts <- aggregate(contracts$spending, by = list(contracts$recipient_county_name), FUN = sum)
+grants <- aggregate(grants$spending, by = list(grants$recipient_county_name), FUN = sum)
 
 colnames(contracts) <- c("county", "contract_spending")
 colnames(grants) <- c("county", "grant_spending")
@@ -20,7 +22,6 @@ usaspending <- usaspending %>%
   select(county, event_value_spending)
 usaspending$event_value_spending[is.na(usaspending$event_value_spending)] <- 0
 
-
 # 1.2: Now grab the SmartPay data by county #
 smartpay <- read_xlsx(file.path(input_path, paste0("SmartPay_FY_2021.xlsx")), sheet = 2)
 
@@ -32,77 +33,88 @@ smartpay <- smartpay %>%
 smartpay$county = toupper(smartpay$county)
 smartpay <- smartpay[!(smartpay$county=="TOTAL"),]
 
-
-# 1.3: Read in and wrangle VA direct payments data. should have this already aggregated by county from master analysis run through #
-va_benefits <- read.csv(file.path(input_path, paste0(f_year, va_direct_pay_c)))
-
+# 1.3: Read in and wrangle VA direct payments data #
+va_benefits <- read.csv(file.path(input_path, paste0(f_year, "_cleaned_va_benefits.csv")))
+va_benefits <- aggregate(va_benefits$spending, by = list(va_benefits$recipient_county_name), FUN = sum) %>%
+  rename(county = Group.1, household_spending = x)
 
 # 1.4: Aggregate all 3 spending data sources by county to get total input spending per county #
 input_spend <- Reduce(function(x,y) merge(x = x, y = y, by = "county", all = TRUE),
                          list(usaspending, va_benefits, smartpay))
 input_spend <- input_spend %>% 
-  mutate("input_spending" = event_value_spending + household_spending + smartpay_spending)
+  mutate(input_spending = event_value_spending + household_spending + smartpay_spending)
 
 
 # 1.5: Read in and wrangle employment data, should have this already aggregated by county from master analysis run through #
-input_emp <- read.xlsx("2021_employment_totals.xlsx", sheet = 1)
+input_emp <- read_xlsx(file.path(input_path, paste0(year, "_direct_employment.xlsx")), sheet = 1)
 
-#reorganize employment sheet - NOTE!!! - the .1825 calculation reverts the employment number from FTEs to total jobs
-## in other words, these employment numbers represent TOTAl jobs, NOT FTEs.
-input_emp <- input_emp %>% 
-  rename(County = county, Military_Personnel = mili_emp_notFTEs, Civilian_Personnel = implan_546, input_employment = total_input_emp) %>%
-  select("County", "Civilian_Personnel", "Military_Personnel", "input_employment")
+#Select the needed columns - county, civilian employees, military employees, and total employees
+input_emp <- input_emp %>%
+  rename(input_emp = total_emp) %>%
+  select(county, mili_emp, civil_emp, input_emp)
 
 
-## 1.6: Merge employment and spending data together to get TOTAL input spending and employment for counties. remove previous variables from environment
-county_inputs <- merge(input_spend, input_emp, by = "county", all = TRUE)
+# 1.6: Merge employment and spending data together to get TOTAL input spending and employment for counties. remove previous variables from environment #
+CountyInputs <- merge(input_spend, input_emp, by = "county", all = TRUE)
 rm(contracts, grants, usaspending, smartpay, va_benefits)
 
 
 ## PART 2: OUTPUT DATA ##
 
 # Read in the County Economic Indicators and County Tax Results Excel sheets
-county_econ_indicators <- read.xlsx("Economic Indicators Counties 2021.xlsx")
-county_tax_results <- read.xlsx("Tax Results Counties 2021.xlsx")
+county_econ_indicators <- read.xlsx(file.path(temp_path, paste0(year, "_econ_indicators_by_county.xlsx")))
+#county_tax_results <- read.xlsx(file.path(temp_path, paste0(year, "_tax_results_by_county.xlsx")))
 
-# Step 1: County Output AND Employment - use "county_econ_indicators" and select the county, output/employment impact type, output, and employment columns
+# 2.1: County Output AND Employment - use "county_econ_indicators" and select the county, output/employment impact type, output, and employment columns #
 EconOutput <- county_econ_indicators %>% 
-  select ("County", "Impact", "total_Output") %>%
-  rename(total_econ_output = total_Output)
+  select(county, impact, total_output) %>%
+  rename(total_econ_output = total_output)
 
 OutputEmployment <- county_econ_indicators %>% 
-  select ("County", "Impact", "total_employment") %>%
-  rename(output_employment = total_employment)
+  select(county, impact, total_employment) %>%
+  rename(total_fte = total_employment)
 
-# Step 2: County Tax Results - use "county_tax_results", add a column for total local tax revenue, 
-#select the county, impact, and total tax revenue by local, state, and federal columns. 
-#Then filter to only include the totals of each by total impact.
+# 2.2: County Tax Results - use "county_tax_results", add a column for total local tax revenue #
+# select the county, impact, and total tax revenue by local, state, and federal columns. Then filter to only include the totals by impact.
 
-county_tax_results <- county_tax_results %>% 
-  mutate("total_Local" = total_Sub_County_General + total_Sub_County_Special_District + total_County) %>%
-  select("County", "Impact", "total_Local", "total_State", "total_Federal", "total") %>% 
-  rename(tax_Local = total_Local, tax_State = total_State, tax_Federal = total_Federal, tax_total = total)
+#county_tax_results <- county_tax_results %>% 
+  #mutate("total_Local" = total_Sub_County_General + total_Sub_County_Special_District + total_County) %>%
+  #select("County", "Impact", "total_Local", "total_State", "total_Federal", "total") %>% 
+  #rename(tax_Local = total_Local, tax_State = total_State, tax_Federal = total_Federal, tax_total = total)
 
-# Step 3: Combine all of the output data frames into one
-CountyOutputs <- Reduce(function(x,y,z) merge(x = x, y = y, z = z, c("County", "Impact")), 
+# 2.3: Combine all of the output data frames into one #
+CountyOutputs <- Reduce(function(x,y,z) merge(x = x, y = y, z = z, c("county", "impact")), 
                         list(EconOutput, county_tax_results, OutputEmployment))
 
 # Clean output data frames (remove unnecessary numbers from Impacts column)
 CountyOutputs <- CountyOutputs %>%
-  mutate(Impact = replace(Impact, Impact == "1 - Direct", "Direct")) %>%
-  mutate(Impact = replace(Impact, Impact == "2 - Indirect", "Indirect")) %>%
-  mutate(Impact = replace(Impact, Impact == "3 - Induced", "Induced"))
+  mutate(impact = replace(impact, impact == "1 - Direct", "Direct")) %>%
+  mutate(impact = replace(impact, impact == "2 - Indirect", "Indirect")) %>%
+  mutate(impact = replace(impact, impact == "3 - Induced", "Induced"))
 
-# Convert data to vertical
+# Convert data to vertical, uppercase county names, and reorder column names
 CountyOutputs <- CountyOutputs %>% 
-  gather(variable, value, -(County:Impact)) %>%
-  unite(temp, Impact, variable) %>%
+  gather(variable, value, -(county:impact)) %>%
+  unite(temp, impact, variable) %>%
   spread(temp, value)
 
-## FINAL STEPS: Combine input and output data, and reorder column names
-CountyIOData <- merge(CountyInputs, CountyOutputs, by = "County", all = TRUE)
+CountyOutputs$county <- toupper(CountyOutputs$county)
+CountyOutputs <- CountyOutputs %>%
+  relocate(Indirect_total_econ_output, .after = Direct_total_econ_output) %>%
+  relocate(Induced_total_econ_output, .after = Indirect_total_econ_output) %>%
+  relocate(Total_total_econ_output, .after = Induced_total_econ_output)
 
-## REGIONALIZE DATA
+# Combine the county input and output data into 1 dataframe
+CountyIOData <- merge(CountyInputs, CountyOutputs, by = "county", all = TRUE)
+CountyIOData <- CountyIOData %>%
+  rename(direct_output = Direct_total_econ_output, indirect_output = Indirect_total_econ_output, 
+         induced_output = Induced_total_econ_output, total_output = Total_total_econ_output, 
+         direct_fte = Direct_total_fte, indirect_fte = Indirect_total_fte, 
+         induced_fte = Induced_total_fte, total_fte = Total_total_fte)
+
+
+
+## REGIONALIZE DATA ##
 regions_crosswalk <- read_excel("Regions.xlsx") #upload regions crosswalk
 colnames(regions_crosswalk) <- c("County", "Region") #change col names so they match dfs
 
@@ -214,31 +226,33 @@ CountyIOData <- CountyIOData %>%
   relocate(economic_output_per_100000, .after = Total_econ_output) %>%
   relocate(FTE_per_100000, .after = Total_output_FTE)
 
-## Industries by Impact (will be a separate sheet in the same spreadsheet)
+## THIS COMPLETES SHEET 1 ##
 
-# Import industries by impact master spreadsheet and crosswalk
-industries_by_impact <- read_excel("Industries by Impact 2021.xlsx") # upload industries by impact for counties
-ind_crosswalk <- read_excel("Industries by Impact Groupings.xlsx") # upload crosswalk
 
-industries_by_impact <- industries_by_impact %>% 
-  separate(Impact, c("industry_display","description"), sep = "( - )")
+## SHEET 2: Industries' Output ##
 
-ind_crosswalk <- ind_crosswalk %>%
-  select(industry_display, rollup) #get rid of un-needed columns
+# Import industries output spreadsheet and crosswalk, format them appropriately, and merge together. Sum the data by county and rollup
+industry_output <- read_xlsx(file.path(temp_path, paste0(year, "_industry_output_by_county.xlsx")))
+industry_output <- industry_output %>% 
+  separate(impact, c("industry_display","description"), sep = "( - )")
 
-industries_by_impact <- merge(ind_crosswalk, industries_by_impact, by = ("industry_display")) #merge by industry_display
-industries_by_impact <- industries_by_impact %>% 
-  select(-(c(industry_display, description))) %>% #get rid of extra column (it breaks the code below)
-  group_by(County, rollup) %>% #group by rollup, then county
-  summarise_each(funs(sum)) #sum the columns
+industry_crosswalk <- read_xlsx(file.path(raw_path, paste0("Industries by Impact Groupings.xlsx")))
+industry_crosswalk <- industry_crosswalk %>%
+  select(industry_display, rollup)
 
-industries_by_impact <- merge(industries_by_impact, regions_crosswalk, by = ("County"), all = TRUE) #apply crosswalk to counties spreadsheet
+industry_output <- merge(industry_crosswalk, industry_output, by = ("industry_display"))
+industry_output <- industry_output %>% 
+  select(-(c(industry_display, description))) %>%
+  group_by(county, rollup) %>%
+  summarise_each(funs(sum))
+industry_output$county <- toupper(industry_output$county)
 
-#Move columns around so they match the other df 
+# Regionalize the data by merging it with the regions crosswalk
+industries_by_impact <- merge(industries_by_impact, regions_crosswalk, by = ("County"), all = TRUE)
 industries_by_impact <- industries_by_impact %>%
   relocate(Region, .after = County)
 
-#Regionalize data - create a separate df with industry info aggregated by region
+# Create a separate df with industry info aggregated by region
 industry_Regionsag <- industries_by_impact %>% 
   select(-(County)) %>% #get rid of impacts column (it breaks the code below)
   group_by(Region, rollup) %>% #group by region and rollup
@@ -249,33 +263,28 @@ industry_Regionsag <- industries_by_impact %>%
 #Vertically merge regionalized data with industries by impact data
 industries_by_impact <- rbind(industries_by_impact, industry_Regionsag)
 
-#get rid of unnecessary columns, rename columns
-industries_by_impact <- industries_by_impact %>%
-  select(County, Region, rollup, total_Direct, total_Indirect, total_Induced, total) %>%
-  rename(Direct = total_Direct, Indirect = total_Indirect, Induced = total_Induced, Total = total)
 
-## EMPLOYMENT BY INDUSTRY ## (will be a separate sheet in the same spreadsheet)
+## SHEET 3: Industries' Employment ##
 
-# Import employment by industrymaster spreadsheet
-employment_by_industry <- read_excel("Employment Industries by Impact 2021.xlsx") # upload industries by impact for counties
+# Import industries employment spreadsheet, and run same process as you did for industries' output
+industry_employment <- read_xlsx(file.path(temp_path, paste0(year, "_industry_employment_by_county.xlsx")))
+industry_employment <- industry_employment %>% 
+  separate(impact, c("industry_display","description"), sep = "( - )")
 
-employment_by_industry <- employment_by_industry %>% 
-  separate(Impact, c("industry_display","description"), sep = "( - )")
+industry_employment <- merge(industry_crosswalk, industry_employment, by = ("industry_display"))
 
-employment_by_industry <- merge(ind_crosswalk, employment_by_industry, by = ("industry_display")) #merge by industry_display
+industry_employment  <- industry_employment %>% 
+  select(-(c(industry_display, description))) %>%
+  group_by(county, rollup) %>%
+  summarise_each(funs(sum))
+industry_employment$county <- toupper(industry_employment$county)
 
-employment_by_industry  <- employment_by_industry %>% 
-  select(-(c(industry_display, description))) %>% #get rid of extra columns (it breaks the code below)
-  group_by(County, rollup) %>% #group by rollup, then county
-  summarise_each(funs(sum)) #sum the columns
-
+# Regionalize the data by merging it with the regions crosswalk
 employment_by_industry  <- merge(employment_by_industry, regions_crosswalk, by = ("County"), all = TRUE) #apply crosswalk to counties spreadsheet
-
-#Move columns around so they match the other df 
 employment_by_industry <- employment_by_industry %>%
   relocate(Region, .after = County)
 
-#Regionalize data - create a separate df with industry info aggregated by region
+# Create a separate df with industry info aggregated by region
 employment_Regionsag <- employment_by_industry %>% 
   select(-(County)) %>% #get rid of impacts column (it breaks the code below)
   group_by(Region, rollup) %>% #group by region and rollup
@@ -286,15 +295,7 @@ employment_Regionsag <- employment_by_industry %>%
 #Vertically merge regionalized data with industries by imact data
 employment_by_industry <- rbind(employment_by_industry, employment_Regionsag)
 
-#get rid of unnecessary columns, rename columns
-employment_by_industry <- employment_by_industry %>%
-  select(County, Region, rollup, total_Direct, total_Indirect, total_Induced, total) %>%
-  rename(Direct = total_Direct, Indirect = total_Indirect, Induced = "total_Induced", Total = total)
 
-#create list with dataframes
-multisheetlist <- list(InputOutput = CountyIOData, Industry = industries_by_impact, EmploymentIndustry = employment_by_industry)
-
-#write into multi-sheet excel file
-write.xlsx(multisheetlist, paste0("County Input-Output Data detailed 2021.xlsx"))
-
-# ALL DONE - This gives you a detailed spreadsheet of all the counties' input and output data for us to use for the factsheets, and a seperate sheet for the industry groupings
+## FINAL STEPS: create list with dataframes, and write list into file. All done! ##
+multisheetlist <- list(InputOutput = CountyIOData, IndustryOutput = industry_output, IndustryEmployment = industry_employment)
+write.xlsx(multisheetlist, file.path(temp_path, paste0(year, "_county_input_output_data.xlsx")))
