@@ -5,7 +5,9 @@
 econ_indic_files <- list.files(file.path(implan_res_c, econ_indic_path), xlsx_pat)
 
 # Create a list of county names as well
-counties <- gsub(paste(year, ".+"), "", econ_indic_files)
+counties <- gsub(year, "", 
+                 gsub(econ_ind_xl, "",
+                      gsub(inv, "", econ_indic_files)))
 
 # Define indices to find the "inverse" and "regular" model data sheets
 inv_ind <- grep(inv, econ_indic_files)
@@ -23,11 +25,11 @@ inv_temp <- result_loop(inv_ind, inv_temp, counties, implan_res_c, econ_indic_pa
 reg_temp$Impact[is.na(reg_temp$Impact)] <- "Total"
 inv_temp$Impact[is.na(inv_temp$Impact)] <- "Total"
 
-# Merge the 2 dataframes into 1, and turn NA values into 0's
+# Merge the 2 dataframes into 1, change columns to be numeric, and turn NA values into 0's
 econ_indic_counties <- merge(reg_temp, inv_temp, by = c("geo", "Impact"), all = TRUE) 
 econ_indic_counties[is.na(econ_indic_counties)] <- 0
 
-# Rename existing columns, and add in new ones
+# Rename existing columns, change columns to be numeric, and add in new ones
 colnames(econ_indic_counties) <- c("county", "impact", "employment", "labor_income", "value_added", "output",
                                    "in_employment", "in_labor_income", "in_value_added", "in_output")
 econ_indic_counties <- econ_indic_counties %>%
@@ -43,7 +45,9 @@ write.xlsx(econ_indic_counties, file.path(temp_path, paste0(year, "_econ_indicat
 tax_res_files <- list.files(file.path(implan_res_c, tax_res_path), xlsx_pat)
 
 # Create a list of county names as well
-counties <- gsub(paste(year, ".+"), "", tax_res_files)
+counties <- gsub(year, "", 
+                 gsub(tax_res_xl, "",
+                      gsub(inv, "", tax_res_files)))
 
 # Define indices to find the "inverse" and "regular" model data sheets
 inv_ind <- grep(inv, tax_res_files)
@@ -86,7 +90,9 @@ write.xlsx(tax_res_counties, file.path(temp_path, paste0(year, "_tax_results_by_
 output_indus_files <- list.files(file.path(implan_res_c, output_indus_path), xlsx_pat)
 
 # Create a list of county names as well
-counties <- gsub(paste(year, ".+"), "", output_indus_files)
+counties <- gsub(year, "", 
+                 gsub(out_ind_xl, "",
+                      gsub(inv, "", output_indus_files)))
 
 # Define indices to find the "inverse" and "regular" model data sheets
 inv_ind <- grep(inv, output_indus_files)
@@ -102,14 +108,15 @@ inv_temp3 <- result_loop(inv_ind, inv_temp3, counties, implan_res_c, output_indu
 
 # Remove extra column and blank rows where impact is "industry display" from each dataframe
 reg_temp3 <- reg_temp3 %>%
-  select(-(...1)) %>%
+  select(-(X1)) %>%
   filter(!(Impact == ind_disp))
 inv_temp3 <- inv_temp3 %>%
-  select(-(...1)) %>%
+  select(-(X1)) %>%
   filter(!(Impact == ind_disp))
 
-# Merge the 2 dataframes into 1
+# Merge the 2 dataframes into 1, and turn NA values into 0's
 output_indus_counties <- merge(reg_temp3, inv_temp3, by = c("geo", "Impact"), all = TRUE) 
+output_indus_counties[is.na(output_indus_counties)] <- 0
 
 # Change column names, and make all the data as type numeric
 colnames(output_indus_counties) <- c("county", "impact", "direct", "indirect", "induced",
@@ -119,9 +126,9 @@ output_indus_counties <- output_indus_counties %>%
 
 # Add in new columns
 output_indus_counties <- output_indus_counties %>%
-  mutate(total_direct = direct, 
+  mutate(total_direct = direct,
          total_indirect = indirect + in_indirect,
-         total_induced = induced + in_induced, 
+         total_induced = induced + in_induced,
          total = reg_total + in_total)
 
 # Write into an Excel file - ALL DONE!
@@ -133,7 +140,9 @@ write.xlsx(output_indus_counties, file.path(temp_path, paste0(year, "_industry_o
 emp_indus_files <- list.files(file.path(implan_res_c, emp_indus_path), xlsx_pat)
 
 # Create a list of county names as well
-counties <- gsub(paste(year, ".+"), "", emp_indus_files)
+counties <- gsub(year, "", 
+                 gsub(emp_ind_xl, "",
+                      gsub(inv, "", emp_indus_files)))
 
 # Define indices to find the "inverse" and "regular" model data sheets
 inv_ind <- grep(inv, emp_indus_files)
@@ -147,16 +156,15 @@ reg_temp4 <- NULL
 reg_temp4 <- result_loop(reg_ind, reg_temp4, counties, implan_res_c, emp_indus_path, emp_indus_files)
 inv_temp4 <- result_loop(inv_ind, inv_temp4, counties, implan_res_c, emp_indus_path, emp_indus_files)
 
-# Remove extra column and blank rows where impact is "industry display" from each dataframe
+# Remove extra column from each dataframe
 reg_temp4 <- reg_temp4 %>%
-  select(-(...1)) %>%
-  filter(!(Impact == ind_disp))
+  select(-(X1))
 inv_temp4 <- inv_temp4 %>%
-  select(-(...1)) %>%
-  filter(!(Impact == ind_disp))
+  select(-(c(X1, Impact.Employment..1...Direct.)))
 
-# Merge the 2 dataframes into 1
-emp_indus_counties <- merge(reg_temp4, inv_temp4, by = c("geo", "Impact"), all = TRUE) 
+# Merge the 2 dataframes into 1, and turn NA values into 0's
+emp_indus_counties <- merge(reg_temp4, inv_temp4, by = c("geo", "Industry.Display"), all = TRUE)
+emp_indus_counties[is.na(emp_indus_counties)] <- 0
 
 # Change column names, and make all the data as type numeric
 colnames(emp_indus_counties) <- c("county", "impact", "direct", "indirect", "induced",

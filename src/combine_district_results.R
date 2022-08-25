@@ -5,7 +5,9 @@
 econ_indic_files <- list.files(file.path(implan_res_d, econ_indic_path), xlsx_pat)
 
 # Create a list of districts as well
-districts <- gsub(paste("", year, ".+"), "", econ_indic_files)
+districts <- gsub(year, "", 
+                 gsub(econ_ind_xl, "",
+                      gsub(inv, "", econ_indic_files)))
 
 # Define index to find the "regular" model data sheet
 reg_ind <- (1:length(econ_indic_files))
@@ -20,7 +22,7 @@ econ_indic_districts <- result_loop(reg_ind, econ_indic_districts, districts, im
 econ_indic_districts$Impact[is.na(econ_indic_districts$Impact)] <- "Total"
 econ_indic_districts[is.na(econ_indic_districts)] <- 0
 
-# Rename existing columns, and add in new ones
+# Rename existing columns
 colnames(econ_indic_districts) <- c("district", "impact", "employment", "labor_income", "value_added", "output")
 
 # Write into an Excel file - ALL DONE!
