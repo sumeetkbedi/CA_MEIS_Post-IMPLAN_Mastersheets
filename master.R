@@ -23,5 +23,5 @@ source("src/combine_county_results.R")
 source("src/combine_district_results.R")
 
 ## Combine input and output data for counties and districts into their respective mastersheets
-source("src/create_county_master.R")
-source("src/create_district_master.R")
+source("src/create_county_mastersheet.R")
+source("src/create_district_mastersheet.R")
