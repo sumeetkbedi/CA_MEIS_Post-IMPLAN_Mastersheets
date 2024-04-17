@@ -15,8 +15,8 @@ implan_res_d = file.path("data", "raw", "implan_results", "districts")
 
 econ_indic_path = file.path("econ_indicators")
 tax_res_path = file.path("tax_results")
-output_indus_path = file.path("industry_output")
-emp_indus_path = file.path("industry_employment")
+ind_output_path = file.path("industry_output")
+ind_emp_path = file.path("industry_emp")
 
 econ_ind_csv = "econ indicators.csv"
 tax_res_csv = "tax results.csv"
