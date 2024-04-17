@@ -15,15 +15,15 @@ implan_res_d = file.path("data", "raw", "implan_results", "districts")
 
 econ_indic_path = file.path("econ_indicators")
 tax_res_path = file.path("tax_results")
-output_indus_path = file.path("output_industries")
-emp_indus_path = file.path("emp_industries")
+output_indus_path = file.path("industry_output")
+emp_indus_path = file.path("industry_employment")
 
-econ_ind_xl = "econ indicators.xlsx"
-tax_res_xl = "tax results.xlsx"
-out_ind_xl = "industry output.xlsx"
-emp_ind_xl = "industry employment.xlsx"
+econ_ind_csv = "econ indicators.csv"
+tax_res_csv = "tax results.csv"
+out_ind_csv = "industry output.csv"
+emp_ind_csv = "industry employment.csv"
 
-xlsx_pat = "*.xlsx"
+csv_pat = "*.csv"
 inv = "inv"
 
 ind_disp = "Industry Display"
