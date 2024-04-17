@@ -30,14 +30,13 @@ inv_temp$Impact[inv_temp$Impact == ""] <- "Total"
 econ_indic_counties <- merge(reg_temp, inv_temp, by = c("geo", "Impact"), all = TRUE) 
 econ_indic_counties[is.na(econ_indic_counties)] <- 0
 
-# Rename existing columns, and run gsub loop code. Then, change columns to be numeric, and add in new ones
+# Rename existing columns, and run gsub loop code. Then, change columns to be numeric, and add in total columns
 colnames(econ_indic_counties) <- c("county", "impact", "employment", "labor_income", "value_added", "output",
                                    "in_employment", "in_labor_income", "in_value_added", "in_output")
 econ_indic_counties <- gsub_loop(econ_indic_counties)
 
-
-
 econ_indic_counties <- econ_indic_counties %>%
+  mutate_at(3:10, ~ as.numeric(.)) %>%
   mutate(total_employment = employment + in_employment, total_labor_income = labor_income + in_labor_income,
          total_value_added = value_added + in_value_added, total_output = output + in_output)
 
