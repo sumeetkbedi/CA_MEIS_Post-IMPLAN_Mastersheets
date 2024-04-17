@@ -2,11 +2,11 @@
 
 ## ECONOMIC INDICATORS BY IMPACT ##
 # Read in a list of all these files based on their directory
-econ_indic_files <- list.files(file.path(implan_res_c, econ_indic_path), xlsx_pat)
+econ_indic_files <- list.files(file.path(implan_res_c, econ_indic_path), csv_pat)
 
 # Create a list of county names as well
 counties <- gsub(year, "", 
-                 gsub(econ_ind_xl, "",
+                 gsub(econ_ind_csv, "",
                       gsub(inv, "", econ_indic_files)))
 counties <- str_trim(counties)
 
@@ -23,16 +23,20 @@ reg_temp <- result_loop(reg_ind, reg_temp, counties, implan_res_c, econ_indic_pa
 inv_temp <- result_loop(inv_ind, inv_temp, counties, implan_res_c, econ_indic_path, econ_indic_files)
 
 # Change the "NAs" in the dataframes to be "Total"
-reg_temp$Impact[is.na(reg_temp$Impact)] <- "Total"
-inv_temp$Impact[is.na(inv_temp$Impact)] <- "Total"
+reg_temp$Impact[reg_temp$Impact == ""] <- "Total"
+inv_temp$Impact[inv_temp$Impact == ""] <- "Total"
 
 # Merge the 2 dataframes into 1, change columns to be numeric, and turn NA values into 0's
 econ_indic_counties <- merge(reg_temp, inv_temp, by = c("geo", "Impact"), all = TRUE) 
 econ_indic_counties[is.na(econ_indic_counties)] <- 0
 
-# Rename existing columns, change columns to be numeric, and add in new ones
+# Rename existing columns, and run gsub loop code. Then, change columns to be numeric, and add in new ones
 colnames(econ_indic_counties) <- c("county", "impact", "employment", "labor_income", "value_added", "output",
                                    "in_employment", "in_labor_income", "in_value_added", "in_output")
+econ_indic_counties <- gsub_loop(econ_indic_counties)
+
+
+
 econ_indic_counties <- econ_indic_counties %>%
   mutate(total_employment = employment + in_employment, total_labor_income = labor_income + in_labor_income,
          total_value_added = value_added + in_value_added, total_output = output + in_output)

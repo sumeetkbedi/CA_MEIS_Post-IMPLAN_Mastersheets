@@ -16,7 +16,7 @@ source("parameters.R")
 
 # Load function scripts ##
 source("src/result_loop.R")
-
+source("src/gsub_loop.R")
 
 ## Combine all IMPLAN results for county and district into their respective files based on data type (4 for county, 1 for district) ##
 source("src/combine_county_results.R")
