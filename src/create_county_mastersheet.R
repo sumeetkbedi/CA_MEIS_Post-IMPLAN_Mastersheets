@@ -23,7 +23,7 @@ usaspending <- usaspending %>%
 usaspending$event_value_spending[is.na(usaspending$event_value_spending)] <- 0
 
 # 1.2: Now grab the SmartPay data by county #
-smartpay <- read_xlsx(file.path(input_path, paste0("SmartPay_FY_2021.xlsx")), sheet = 2)
+smartpay <- read_xlsx(file.path(input_path, paste0("SmartPay_FY_2022.xlsx")), sheet = 1)
 
 # Rename and select the needed columns. Then modify county columns names and drop the total row at the end
 smartpay <- smartpay %>% 
@@ -63,7 +63,7 @@ rm(contracts, grants, usaspending, smartpay, va_benefits)
 
 # Read in the County Economic Indicators and County Tax Results Excel sheets
 county_econ_indicators <- read.xlsx(file.path(temp_path, paste0(year, "_econ_indicators_by_county.xlsx")))
-#county_tax_results <- read.xlsx(file.path(temp_path, paste0(year, "_tax_results_by_county.xlsx")))
+county_tax_results <- read.xlsx(file.path(temp_path, paste0(year, "_tax_results_by_county.xlsx")))
 
 # 2.1: County Output AND Employment - use "county_econ_indicators" and select the county, output/employment impact type, output, and employment columns #
 EconOutput <- county_econ_indicators %>% 
@@ -77,41 +77,40 @@ OutputEmployment <- county_econ_indicators %>%
 # 2.2: County Tax Results - use "county_tax_results", add a column for total local tax revenue #
 # select the county, impact, and total tax revenue by local, state, and federal columns. Then filter to only include the totals by impact.
 
-#county_tax_results <- county_tax_results %>% 
-  #mutate("total_Local" = total_Sub_County_General + total_Sub_County_Special_District + total_County) %>%
-  #select("County", "Impact", "total_Local", "total_State", "total_Federal", "total") %>% 
-  #rename(tax_Local = total_Local, tax_State = total_State, tax_Federal = total_Federal, tax_total = total)
+county_tax_results <- county_tax_results %>% 
+  mutate(local_tax = total_sub_county_general + total_sub_county_special_district + total_county_rev) %>%
+  select(county, impact, local_tax, total_state, total_federal, total) %>% 
+  rename(state_tax = total_state, federal_tax = total_federal, total_tax = total)
 
 # 2.3: Combine all of the output data frames into one #
 CountyOutputs <- Reduce(function(x,y,z) merge(x = x, y = y, z = z, c("county", "impact")), 
-                        list(EconOutput, county_tax_results, OutputEmployment))
+                        list(EconOutput, OutputEmployment, county_tax_results))
 
 # Clean output data frames (remove unnecessary numbers from Impacts column)
 CountyOutputs <- CountyOutputs %>%
-  mutate(impact = replace(impact, impact == "1 - Direct", "Direct")) %>%
-  mutate(impact = replace(impact, impact == "2 - Indirect", "Indirect")) %>%
-  mutate(impact = replace(impact, impact == "3 - Induced", "Induced"))
+  mutate(impact = case_when(impact == "1 - Direct" ~ "direct",
+                            impact == "2 - Indirect" ~ "indirect",
+                            impact == "3 - Induced" ~ "induced",
+                            TRUE ~ "total"))
 
-# Convert data to vertical, uppercase county names, and reorder column names
+# Convert data to vertical, uppercase county names. Reorder and rename columns
 CountyOutputs <- CountyOutputs %>% 
   gather(variable, value, -(county:impact)) %>%
   unite(temp, impact, variable) %>%
   spread(temp, value)
 
 CountyOutputs$county <- toupper(CountyOutputs$county)
+
+CountyOutputs <- CountyOutputs[,c(1, 5, 11, 17, 23, 6, 12, 18, 24, 3, 9, 15, 21, 4, 10, 16, 22, 2, 8, 14, 20, 7, 13, 19, 25)]
+
 CountyOutputs <- CountyOutputs %>%
-  relocate(Indirect_total_econ_output, .after = Direct_total_econ_output) %>%
-  relocate(Induced_total_econ_output, .after = Indirect_total_econ_output) %>%
-  relocate(Total_total_econ_output, .after = Induced_total_econ_output)
+  rename(direct_output = direct_total_econ_output, indirect_output = indirect_total_econ_output, 
+         induced_output = induced_total_econ_output, total_output = total_total_econ_output, 
+         direct_fte = direct_total_fte, indirect_fte = indirect_total_fte, 
+         induced_fte = induced_total_fte, total_fte = total_total_fte)
 
 # Combine the county input and output data into 1 dataframe
 CountyIOData <- merge(CountyInputs, CountyOutputs, by = "county", all = TRUE)
-CountyIOData <- CountyIOData %>%
-  rename(direct_output = Direct_total_econ_output, indirect_output = Indirect_total_econ_output, 
-         induced_output = Induced_total_econ_output, total_output = Total_total_econ_output, 
-         direct_fte = Direct_total_fte, indirect_fte = Indirect_total_fte, 
-         induced_fte = Induced_total_fte, total_fte = Total_total_fte)
-
 
 
 ## REGIONALIZE DATA ##
@@ -298,4 +297,4 @@ employment_by_industry <- rbind(employment_by_industry, employment_Regionsag)
 
 ## FINAL STEPS: create list with dataframes, and write list into file. All done! ##
 multisheetlist <- list(InputOutput = CountyIOData, IndustryOutput = industry_output, IndustryEmployment = industry_employment)
-write.xlsx(multisheetlist, file.path(temp_path, paste0(year, "_county_input_output_data.xlsx")))
+write.xlsx(multisheetlist, file.path(output_path, paste0(year, "_county_input_output_data.xlsx")))
