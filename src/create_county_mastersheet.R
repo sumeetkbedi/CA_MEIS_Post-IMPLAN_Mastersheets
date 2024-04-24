@@ -44,7 +44,6 @@ input_spend <- Reduce(function(x,y) merge(x = x, y = y, by = "county", all = TRU
 input_spend <- input_spend %>% 
   mutate(input_spending = event_value_spending + household_spending + smartpay_spending)
 
-
 # 1.5: Read in and wrangle employment data, should have this already aggregated by county from master analysis run through #
 input_emp <- read.xlsx(file.path(input_path, paste0(year, "_direct_employment.xlsx")), sheet = 1)
 
@@ -52,7 +51,6 @@ input_emp <- read.xlsx(file.path(input_path, paste0(year, "_direct_employment.xl
 input_emp <- input_emp %>%
   rename(input_emp = total_emp) %>%
   select(county, mili_emp, civil_emp, input_emp)
-
 
 # 1.6: Merge employment and spending data together to get TOTAL input spending and employment for counties. remove previous variables from environment #
 CountyInputs <- merge(input_spend, input_emp, by = "county", all = TRUE)
@@ -114,7 +112,7 @@ CountyIOData <- merge(CountyInputs, CountyOutputs, by = "county", all = TRUE)
 
 
 ## REGIONALIZE DATA ##
-regions_crosswalk <- read.xlsx(file.path(input_path, paste0("Regions.xlsx"))) #upload regions crosswalk
+regions_crosswalk <- read.xlsx(file.path(raw_path, paste0("County_Regions.xlsx"))) #upload regions crosswalk
 colnames(regions_crosswalk) <- c("county", "region") #change col names so they match dfs
 
 # Merge crosswalk to get regions for every county. Relocate the regions column next to the county column

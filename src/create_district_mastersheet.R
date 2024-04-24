@@ -21,16 +21,16 @@ usaspending <- usaspending %>%
   select(district, event_value_spending)
 
 # 1.2: Now grab the SmartPay data by district #
-smartpay <- read_xlsx(file.path(input_path, paste0("SmartPay_FY_2021.xlsx")), sheet = 1)
+smartpay <- read_xlsx(file.path(input_path, paste0("SmartPay_FY_2022.xlsx")), sheet = 2)
 
 # Rename and select the needed columns. Then modify district columns names and drop unneeded rows
 smartpay <- smartpay %>% 
-  rename(district = ...10, smartpay_spending = ...14) %>%
+  rename(district = ...9, smartpay_spending = ...13) %>%
   select(district, smartpay_spending)
 
 smartpay <- smartpay[!(smartpay$district == "District"| smartpay$district == "Total" | is.na(smartpay$district)),]
-smartpay <- as.data.frame(lapply(smartpay, as.numeric))
-
+smartpay$district <- as.integer(smartpay$district)
+smartpay$smartpay_spending <- as.numeric(smartpay$smartpay_spending)
 
 # 1.3: Read in and wrangle VA direct payments data #
 va_benefits <- read.csv(file.path(input_path, paste0(f_year, "_cleaned_va_benefits.csv")))
@@ -43,7 +43,6 @@ input_spend <- Reduce(function(x,y) merge(x = x, y = y, by = "district", all = T
 input_spend <- input_spend %>% 
   mutate(input_spending = event_value_spending + household_spending + smartpay_spending)
 
-
 # 1.5: Read in and wrangle employment data, should have this already aggregated by district from master analysis run through #
 input_emp <- read_xlsx(file.path(input_path, paste0(year, "_direct_employment.xlsx")), sheet = 2)
 
@@ -51,7 +50,6 @@ input_emp <- read_xlsx(file.path(input_path, paste0(year, "_direct_employment.xl
 input_emp <- input_emp %>%
   rename(input_emp = total_emp) %>%
   select(district, mili_emp, civil_emp, input_emp)
-
 
 # 1.6: Merge employment and spending data together to get TOTAL input spending and employment for districts. remove previous variables from environment #
 DistrictInputs <- merge(input_spend, input_emp, by = "district", all = TRUE)
@@ -63,7 +61,7 @@ rm(contracts, grants, usaspending, smartpay, va_benefits)
 # Read in the District Economic Indicators Excel sheet for direct output and employment 
 district_econ_indicators <- read.xlsx(file.path(temp_path, paste0(year, "_econ_indicators_by_district.xlsx")))
 
-## Step 1: Direct Output AND Employment - use "district_econ_indicators" and select the district, direct impact, output, and employment columns
+# 2.1: Direct Output AND Employment - use "district_econ_indicators" and select the district, direct impact, output, and employment columns #
 DirectDistrictOutput <- district_econ_indicators %>% 
   select ("district", "impact", "output") %>%
   mutate(impact = replace(impact, impact == "1 - Direct", "Direct")) %>%
@@ -77,21 +75,21 @@ DirectDistrictEmployment <- district_econ_indicators %>%
   select ("district", "impact", "employment") %>%
   mutate(impact = replace(impact, impact == "1 - Direct", "Direct")) %>%
   filter(impact == "Direct") %>%
-  rename(direct_district_FTE = employment) %>%
-  select("district", "direct_district_FTE")
+  rename(direct_district_fte = employment) %>%
+  select("district", "direct_district_fte")
 DirectDistrictEmployment$district <- as.numeric(gsub("[a-zA-Z ]", "",
                                                      gsub("-", "", DirectDistrictEmployment$district)))
 
-DirectDistrict <- merge(DirectDistrictOutput, DirectDistrictEmployment, by = "district")
+DirectDistrict <- merge(DirectDistrictOutput, DirectDistrictEmployment, by = "district") %>%
+  mutate_at(c("direct_district_fte", "direct_district_output"), as.numeric)
 
 # Now read in the needed files for calculating the districts' indirect and induced output and employment
 county_econ_indicators <- read.xlsx(file.path(temp_path, paste0(year, "_econ_indicators_by_county.xlsx")))
-cd_proportion <- read.xlsx(file.path(raw_path, "county_district_proportion.xlsx")) %>%
-  rename(county = County, district = District)
+cd_proportion <- read.csv(file.path(raw_path, "county_to_52_districts_pop_crosswalk.csv")) %>%
+  rename(county = geography)
 cd_proportion$county = tolower(cd_proportion$county)
 
-
-## Step #2: Induced Output and Employment - grab the induced data from the County Econ Indicators file and merge them
+# 2.2: Induced Output and Employment - grab the induced data from the County Econ Indicators file and merge them #
 InducedCountyOutput <- county_econ_indicators %>% 
   select ("county", "impact", "total_output") %>%
   mutate(impact = replace(impact, impact == "3 - Induced", "Induced")) %>%
@@ -112,16 +110,15 @@ InducedCounty <- merge(InducedCountyEmp, InducedCountyOutput)
 InducedDistrict <- merge(InducedCounty, cd_proportion, by = "county")
 
 InducedDistrict <- InducedDistrict %>%
-  mutate(induced_district_FTE = InducedDistrict$induced_county_employment*InducedDistrict$`%`,
-         induced_district_output = InducedDistrict$induced_county_output*InducedDistrict$`%`) %>%
-  select("district", "induced_district_FTE", "induced_district_output")
+  mutate(induced_district_fte = InducedDistrict$induced_county_employment*InducedDistrict$percentage,
+         induced_district_output = InducedDistrict$induced_county_output*InducedDistrict$percentage) %>%
+  select("district", "induced_district_fte", "induced_district_output")
 InducedDistrict <- InducedDistrict %>%
   aggregate(by = list(InducedDistrict$district), FUN = sum) %>%
-  select("Group.1", "induced_district_FTE", "induced_district_output") %>%
+  select("Group.1", "induced_district_output", "induced_district_fte") %>%
   rename(district = Group.1)
 
-
-## Step 3: Indirect Output and Employment - grab the indirect data from the County Econ Indicators file and merge them
+# 2.3: Indirect Output and Employment - grab the indirect data from the County Econ Indicators file and merge them #
 IndirectCountyOutput <- county_econ_indicators %>% 
   select ("county", "impact", "total_output") %>%
   mutate(impact = replace(impact, impact == "2 - Indirect", "Indirect")) %>%
@@ -141,25 +138,25 @@ IndirectCounty <- merge(IndirectCountyEmp, IndirectCountyOutput)
 # Merge in districts' direct output and employment data with counties' indirect results to calculate districts' indirect results
 IndirectCountyProp <- merge(IndirectCounty, cd_proportion, by = "county")
 
-DistrictD_CountyI <- Reduce(function(x,y) merge(x = x, y = y, by = "district"),
-                            list(DirectDistrictEmployment, DirectDistrictOutput, IndirectCountyProp))
+DistrictD_CountyI <- merge(DirectDistrict, IndirectCountyProp, by = "district")
 DistrictD_CountyI <- DistrictD_CountyI %>%
   relocate(county, .before = district) %>%
-  relocate('%', .after = district) %>%
-  relocate(POP, .after= '%') %>%
-  rename(countypop2010 = POP)
+  relocate(percentage, .after = district) %>%
+  relocate(population, .after= percentage) %>%
+  rename(countypop2020 = population) %>%
+  mutate_at(c("direct_district_fte", "direct_district_output"), as.numeric)
 
 # Calculate the districts' 2010 population, which is used to apportion the district's share in each county, and multiply this share by the districts' direct output and employment
-DistrictPop2010 <- aggregate(DistrictD_CountyI$countypop2010, by = list(DistrictD_CountyI$district), FUN = sum) %>%
-  rename(district = Group.1, districtpop2010 = x)
+DistrictPop2020 <- aggregate(DistrictD_CountyI$countypop2020, by = list(DistrictD_CountyI$district), FUN = sum) %>%
+  rename(district = Group.1, districtpop2020 = x)
 
-DistrictD_CountyI <- merge(DistrictD_CountyI, DistrictPop2010, by = "district") %>%
-  relocate(districtpop2010, .after= countypop2010)
+DistrictD_CountyI <- merge(DistrictD_CountyI, DistrictPop2020, by = "district") %>%
+  relocate(districtpop2020, .after= countypop2020)
 DistrictD_CountyI <- DistrictD_CountyI %>%
-  mutate(CountyDistrictShare = DistrictD_CountyI$countypop2010 / DistrictD_CountyI$districtpop2010)
+  mutate(CountyDistrictShare = DistrictD_CountyI$countypop2020 / DistrictD_CountyI$districtpop2020)
 DistrictD_CountyI <- DistrictD_CountyI %>%
   mutate(CountyDistrictDirectOutput = DistrictD_CountyI$direct_district_output * DistrictD_CountyI$CountyDistrictShare,
-         CountyDistrictDirectEmployment = DistrictD_CountyI$direct_district_FTE * DistrictD_CountyI$CountyDistrictShare)
+         CountyDistrictDirectEmployment = DistrictD_CountyI$direct_district_fte * DistrictD_CountyI$CountyDistrictShare)
 
 # Create 2 new data frames that aggregate the CountyDistrict output and employment, and merge back into the original data frame DistrictD_CountyI
 CountyDistrictDirectOutputSum <- aggregate(DistrictD_CountyI$CountyDistrictDirectOutput, by = list(DistrictD_CountyI$county), FUN = sum) %>%
@@ -183,27 +180,25 @@ IndirectDistrictOutput <- aggregate(DistrictD_CountyI$CountyShareOutput, by = li
   rename(district = Group.1, indirect_district_output = x)
 
 IndirectDistrictEmployment <- aggregate(DistrictD_CountyI$CountyShareEmployment, by = list(DistrictD_CountyI$district), FUN = sum) %>%
-  rename(district = Group.1, indirect_district_FTE = x)
+  rename(district = Group.1, indirect_district_fte = x)
 
 IndirectDistrict <- merge(IndirectDistrictOutput, IndirectDistrictEmployment)
 
-
-## Step 4: Combine all data frames into one
+# 2.4: Combine all data frames into one #
 DistrictOutputs <- Reduce(function(x,y) merge(x = x, y = y, by = "district"),
                           list(DirectDistrict, IndirectDistrict, InducedDistrict))
 DistrictOutputs <- DistrictOutputs %>%
   relocate(indirect_district_output, .after = direct_district_output) %>%
   relocate(induced_district_output, .after = indirect_district_output) %>%
-  relocate(indirect_district_FTE, .after = direct_district_FTE) %>%
-  relocate(induced_district_FTE, .after = indirect_district_FTE)
+  relocate(indirect_district_fte, .after = direct_district_fte) %>%
+  relocate(induced_district_fte, .after = indirect_district_fte)
 DistrictOutputs <- DistrictOutputs %>%
   mutate(total_district_output = direct_district_output + indirect_district_output + induced_district_output,
-         total_district_FTE = direct_district_FTE + indirect_district_FTE + induced_district_FTE) %>%
-  relocate(total_district_output, .before = direct_district_FTE)
+         total_district_fte = direct_district_fte + indirect_district_fte + induced_district_fte) %>%
+  relocate(total_district_output, .before = direct_district_fte)
 
 # Combine the county input and output data into 1 dataframe
 DistrictIOData <- merge(DistrictInputs, DistrictOutputs, by = "district", all = TRUE)
-
 
 
 ## REGIONALIZE DATA ##
