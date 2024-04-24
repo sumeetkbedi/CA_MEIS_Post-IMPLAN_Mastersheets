@@ -23,11 +23,11 @@ usaspending <- usaspending %>%
 usaspending$event_value_spending[is.na(usaspending$event_value_spending)] <- 0
 
 # 1.2: Now grab the SmartPay data by county #
-smartpay <- read_xlsx(file.path(input_path, paste0("SmartPay_FY_2022.xlsx")), sheet = 1)
+smartpay <- read.xlsx(file.path(input_path, paste0("SmartPay_FY_2022.xlsx")), sheet = 1)
 
 # Rename and select the needed columns. Then modify county columns names and drop the total row at the end
 smartpay <- smartpay %>% 
-  rename(county = ...1, smartpay_spending = Total) %>%
+  rename(county = X1, smartpay_spending = Total) %>%
   select(county, smartpay_spending)
 
 smartpay$county = toupper(smartpay$county)
@@ -46,7 +46,7 @@ input_spend <- input_spend %>%
 
 
 # 1.5: Read in and wrangle employment data, should have this already aggregated by county from master analysis run through #
-input_emp <- read_xlsx(file.path(input_path, paste0(year, "_direct_employment.xlsx")), sheet = 1)
+input_emp <- read.xlsx(file.path(input_path, paste0(year, "_direct_employment.xlsx")), sheet = 1)
 
 #Select the needed columns - county, civilian employees, military employees, and total employees
 input_emp <- input_emp %>%
@@ -114,116 +114,99 @@ CountyIOData <- merge(CountyInputs, CountyOutputs, by = "county", all = TRUE)
 
 
 ## REGIONALIZE DATA ##
-regions_crosswalk <- read_excel("Regions.xlsx") #upload regions crosswalk
-colnames(regions_crosswalk) <- c("County", "Region") #change col names so they match dfs
+regions_crosswalk <- read.xlsx(file.path(input_path, paste0("Regions.xlsx"))) #upload regions crosswalk
+colnames(regions_crosswalk) <- c("county", "region") #change col names so they match dfs
 
-# Merge crosswalk to get regions for every county
-CountyIOData <- merge(CountyIOData, regions_crosswalk, by = ("County"), all = TRUE)
-
-# Reorder columns
+# Merge crosswalk to get regions for every county. Relocate the regions column next to the county column
+CountyIOData <- merge(CountyIOData, regions_crosswalk, by = ("county"), all = TRUE)
 CountyIOData <- CountyIOData %>%
-  select(c("County", "Region", "event_value_spending", "household_spending", "smartpay_c", "input_spending", "Civilian_Personnel", 
-           "Military_Personnel", "input_employment", "Direct_total_econ_output", "Indirect_total_econ_output", 
-           "Induced_total_econ_output", "Total_total_econ_output", "Direct_output_employment", "Indirect_output_employment", 
-           "Induced_output_employment", "Total_output_employment", "Direct_tax_Local", "Indirect_tax_Local", 
-           "Induced_tax_Local", "Total_tax_Local", "Direct_tax_State", "Indirect_tax_State", 
-           "Induced_tax_State", "Total_tax_State","Direct_tax_Federal", "Indirect_tax_Federal", 
-           "Induced_tax_Federal", "Total_tax_Federal", "Direct_tax_total", "Indirect_tax_total", "Induced_tax_total",
-           "Total_tax_total")) %>%
-  rename(Direct_econ_output = Direct_total_econ_output, Indirect_econ_output = Indirect_total_econ_output, 
-         Induced_econ_output = Induced_total_econ_output, Total_econ_output = Total_total_econ_output, 
-         Direct_output_FTE = Direct_output_employment, Indirect_output_FTE = Indirect_output_employment, 
-         Induced_output_FTE = Induced_output_employment, Total_output_FTE = Total_output_employment, 
-         Total_combined_tax = Total_tax_total)
+  relocate(region, .after = county)
 
 # Create new DF with data aggregated by region
 Regionsag <- CountyIOData %>% 
-  select(-(County)) %>% #get rid of County column (it breaks the code below)
-  group_by(Region) %>% #group by region
+  select(-(county)) %>% #get rid of County column (it breaks the code below)
+  group_by(region) %>% #group by region
   summarise_each(funs(sum)) %>% #sum the columns
-  mutate(County = "REGION") %>% #make county name "region"
-  relocate(County, .before = Region) #move the region column
+  mutate(county = "REGION") %>% #make county name "region"
+  relocate(county, .before = region) #move the region column
 
 # Vertically merge data aggregated by region with CountyIOData
 CountyIOData <- rbind(CountyIOData, Regionsag)
 
+
 ## ADD % OF EMPLOYMENT PER COUNTY ## - this is percentage of total jobs in a county that are supported by national security spending
-labor_force_county <- read_xlsx("2020 Labor Force by County EDD.xlsx")
+labor_force_county <- read.xlsx(file.path(input_path, paste0("2022 Labor Force by County EDD.xlsx")))
 
 labor_force_county <- labor_force_county %>% #select only needed columns
   select(COUNTY, EMPLOYMENT)  %>%
-  rename(County = COUNTY, Employment = EMPLOYMENT)
+  rename(county = COUNTY, employment = EMPLOYMENT)
 
-# merge region crosswalk with labor force dta
-labor_force_county <- merge(labor_force_county, regions_crosswalk, by = ("County"), all = TRUE) 
+# merge region crosswalk with labor force data. Get regional totals
+labor_force_county <- merge(labor_force_county, regions_crosswalk, by = ("county"), all = TRUE) 
 
-# get region totals
 regions_labor_force_data <- labor_force_county %>%
-  select(-(County)) %>% #get rid of County column (it breaks the code below)
-  group_by(Region) %>% #group by region
+  select(-(county)) %>% #get rid of County column (it breaks the code below)
+  group_by(region) %>% #group by region
   summarise_each(funs(sum)) %>% #sum the columns
-  mutate(County = "REGION") %>% #make county name "region"
-  relocate(County, .before = Region) #move the region column
+  mutate(county = "REGION") %>% #make county name "region"
+  relocate(county, .before = region) #move the region column
 
-# vertically merge regionalized data with labor force data
+# Vertically merge regionalized data with labor force data. Then merge with county input-output data
 labor_force_county <- rbind(labor_force_county, regions_labor_force_data) 
 
-# Merge with county input/output data
-CountyIOData <- merge(CountyIOData, labor_force_county, by = (c("County", "Region")), all = TRUE)
+CountyIOData <- merge(CountyIOData, labor_force_county, by = (c("county", "region")), all = TRUE)
 
 # Calculate percentage of total county employment made up by national security-generated jobs
 CountyIOData <- CountyIOData %>%
-  mutate(percent_total_county_employment = Total_output_FTE/Employment) %>%
-  select(-(Employment)) %>%
-  relocate(percent_total_county_employment, .after = Total_output_FTE)
+  mutate(percent_total_county_employment = total_fte/employment) %>%
+  select(-(employment)) %>%
+  relocate(percent_total_county_employment, .after = total_fte)
+
 
 ## ADD COUNTY POPULATION COLUMN ##
-County_pop <- read_xlsx("2020 CA Population by County.xlsx", sheet = 2)
-County_pop <- County_pop %>%
-  select(Geography, "2020") %>%
-  rename(County = Geography, Population = "2020")
-County_pop$County <-gsub(" County","",as.character(County_pop$County))
-County_pop$County <-toupper(County_pop$County)
+county_pop <- read.xlsx(file.path(input_path, paste0("2022 CA Population by County.xlsx")), sheet = 2)
+county_pop <- county_pop %>%
+  select(Geography, "2022") %>%
+  rename(county = Geography, population = "2022")
+county_pop <- county_pop[-60,]
+county_pop$county <- gsub(" County","",as.character(county_pop$county))
+county_pop$county <- toupper(county_pop$county)
 
-County_pop <- merge(County_pop, regions_crosswalk, by = ("County"))
+county_pop <- merge(county_pop, regions_crosswalk, by = ("county"))
 
-#regionalize county population data
-regions_County_pop <- County_pop %>%
-  select(-(County)) %>% #get rid of County column (it breaks the code below)
-  group_by(Region) %>% #group by region
+# Regionalize county population data
+regions_county_pop <- county_pop %>%
+  select(-(county)) %>% #get rid of County column (it breaks the code below)
+  group_by(region) %>% #group by region
   summarise_each(funs(sum)) %>% #sum the columns
-  mutate(County = "REGION") %>% #make county name "region"
-  relocate(County, .before = Region) #move the region column
+  mutate(county = "REGION") %>% #make county name "region"
+  relocate(county, .before = region) #move the region column
 
-# vertically merge regionalized data with labor force data
-County_pop <- rbind(County_pop, regions_County_pop) 
+# Vertically merge regionalized data with population data. Then merge with county input/output data
+county_pop <- rbind(county_pop, regions_county_pop)
 
-# Merge with county input/output data
-CountyIOData <- merge(CountyIOData, County_pop, by = (c("County", "Region")), all = TRUE)
+CountyIOData <- merge(CountyIOData, county_pop, by = (c("county", "region")), all = TRUE)
 
-# relocate to top of data
+# Add a column that convert county names to title case. Relocate population and county title case columns to front of data
+CountyIOData$county_title <- str_to_title(CountyIOData$county)
+
 CountyIOData <- CountyIOData %>%
-  relocate(Population, .before = event_value_spending)
+  relocate(population, .before = event_value_spending) %>%
+  relocate(county_title, .before = region)
 
-#Add column that converts county names to title case (Del Norte instead of DEL NORTE) - this is for ease of use in making graphs
-CountyIOData$County_Title <- str_to_title(CountyIOData$County)
-
-# relocate to top of data
-CountyIOData <- CountyIOData %>%
-  relocate(County_Title, .before = Region)
 
 ## Add data per 100,000 residents ##
 CountyIOData <- CountyIOData %>%
-  mutate(input_spending_per_100000 = ((input_spending/Population)*100000), 
-         input_employment_per_100000 = ((input_employment/Population)*100000),
-         economic_output_per_100000 = ((Total_econ_output/Population)*100000),
-         FTE_per_100000 = ((Total_output_FTE/Population)*100000))
+  mutate(input_spending_per_100000 = ((input_spending/population)*100000), 
+         input_emp_per_100000 = ((input_emp/population)*100000),
+         econ_output_per_100000 = ((total_output/population)*100000),
+         fte_per_100000 = ((total_fte/population)*100000))
 
 CountyIOData <- CountyIOData %>%
   relocate(input_spending_per_100000, .after = input_spending) %>%
-  relocate(input_employment_per_100000, .after = input_employment) %>%
-  relocate(economic_output_per_100000, .after = Total_econ_output) %>%
-  relocate(FTE_per_100000, .after = Total_output_FTE)
+  relocate(input_emp_per_100000, .after = input_emp) %>%
+  relocate(econ_output_per_100000, .after = total_output) %>%
+  relocate(fte_per_100000, .after = total_fte)
 
 ## THIS COMPLETES SHEET 1 ##
 
@@ -233,7 +216,7 @@ CountyIOData <- CountyIOData %>%
 # Import industries output spreadsheet and crosswalk, format them appropriately, and merge together. Sum the data by county and rollup
 industry_output <- read_xlsx(file.path(temp_path, paste0(year, "_industry_output_by_county.xlsx")))
 industry_output <- industry_output %>% 
-  separate(impact, c("industry_display","description"), sep = "( - )")
+  separate(impact, c("industry_display","description"), sep = "( - )", extra = "merge", fill = "right")
 
 industry_crosswalk <- read_xlsx(file.path(raw_path, paste0("Industries by Impact Groupings.xlsx")))
 industry_crosswalk <- industry_crosswalk %>%
@@ -247,20 +230,20 @@ industry_output <- industry_output %>%
 industry_output$county <- toupper(industry_output$county)
 
 # Regionalize the data by merging it with the regions crosswalk
-industries_by_impact <- merge(industries_by_impact, regions_crosswalk, by = ("County"), all = TRUE)
-industries_by_impact <- industries_by_impact %>%
-  relocate(Region, .after = County)
+industry_output <- merge(industry_output, regions_crosswalk, by = ("county"), all = TRUE)
+industry_output <- industry_output %>%
+  relocate(region, .after = county)
 
 # Create a separate df with industry info aggregated by region
-industry_Regionsag <- industries_by_impact %>% 
-  select(-(County)) %>% #get rid of impacts column (it breaks the code below)
-  group_by(Region, rollup) %>% #group by region and rollup
+industry_Regionsag <- industry_output %>% 
+  select(-(county)) %>% #get rid of impacts column (it breaks the code below)
+  group_by(region, rollup) %>% #group by region and rollup
   summarise_each(funs(sum)) %>% #sum the columns
-  mutate(County = "REGION") %>% #re-add county name but set them all to Region
-  relocate(County, .before = Region) #move columns around for consistency
+  mutate(county = "REGION") %>% #re-add county name but set them all to Region
+  relocate(county, .before = region) #move columns around for consistency
 
 #Vertically merge regionalized data with industries by impact data
-industries_by_impact <- rbind(industries_by_impact, industry_Regionsag)
+industry_output <- rbind(industry_output, industry_Regionsag)
 
 
 ## SHEET 3: Industries' Employment ##
@@ -268,7 +251,7 @@ industries_by_impact <- rbind(industries_by_impact, industry_Regionsag)
 # Import industries employment spreadsheet, and run same process as you did for industries' output
 industry_employment <- read_xlsx(file.path(temp_path, paste0(year, "_industry_employment_by_county.xlsx")))
 industry_employment <- industry_employment %>% 
-  separate(impact, c("industry_display","description"), sep = "( - )")
+  separate(impact, c("industry_display","description"), sep = "( - )", extra = "merge", fill = "right")
 
 industry_employment <- merge(industry_crosswalk, industry_employment, by = ("industry_display"))
 
@@ -279,20 +262,20 @@ industry_employment  <- industry_employment %>%
 industry_employment$county <- toupper(industry_employment$county)
 
 # Regionalize the data by merging it with the regions crosswalk
-employment_by_industry  <- merge(employment_by_industry, regions_crosswalk, by = ("County"), all = TRUE) #apply crosswalk to counties spreadsheet
-employment_by_industry <- employment_by_industry %>%
-  relocate(Region, .after = County)
+industry_employment  <- merge(industry_employment, regions_crosswalk, by = ("county"), all = TRUE) #apply crosswalk to counties spreadsheet
+industry_employment <- industry_employment %>%
+  relocate(region, .after = county)
 
 # Create a separate df with industry info aggregated by region
-employment_Regionsag <- employment_by_industry %>% 
-  select(-(County)) %>% #get rid of impacts column (it breaks the code below)
-  group_by(Region, rollup) %>% #group by region and rollup
+employment_Regionsag <- industry_employment %>% 
+  select(-(county)) %>% #get rid of impacts column (it breaks the code below)
+  group_by(region, rollup) %>% #group by region and rollup
   summarise_each(funs(sum)) %>% #sum the columns
-  mutate(County = "REGION") %>% #re-add county name but set them all to Region
-  relocate(County, .before = Region) #move columns around for consistency
+  mutate(county = "REGION") %>% #re-add county name but set them all to Region
+  relocate(county, .before = region) #move columns around for consistency
 
 #Vertically merge regionalized data with industries by imact data
-employment_by_industry <- rbind(employment_by_industry, employment_Regionsag)
+industry_employment <- rbind(industry_employment, employment_Regionsag)
 
 
 ## FINAL STEPS: create list with dataframes, and write list into file. All done! ##

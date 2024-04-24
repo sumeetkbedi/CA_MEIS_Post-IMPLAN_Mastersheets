@@ -124,7 +124,8 @@ inv_temp3 <- inv_temp3 %>%
   filter(!(Impact == ind_disp))
 
 # Merge the 2 dataframes into 1, and turn NA values into 0's
-ind_output_counties <- merge(reg_temp3, inv_temp3, by = c("geo", "Impact"), all = TRUE) 
+ind_output_counties <- merge(reg_temp3, inv_temp3, by = c("geo", "Impact"), all = TRUE)
+ind_output_counties$Impact[ind_output_counties$Impact == ""] <- "Total"
 ind_output_counties[ind_output_counties == ""] <- 0
 
 # Rename existing columns, and run gsub loop code. Then, change columns to be numeric, and add in total columns
