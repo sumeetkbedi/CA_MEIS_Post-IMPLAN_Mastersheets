@@ -112,7 +112,7 @@ CountyIOData <- merge(CountyInputs, CountyOutputs, by = "county", all = TRUE)
 
 
 ## REGIONALIZE DATA ##
-regions_crosswalk <- read.xlsx(file.path(raw_path, paste0("County_Regions.xlsx"))) #upload regions crosswalk
+regions_crosswalk <- read.xlsx(file.path(input_path, paste0("County_Regions.xlsx"))) #upload regions crosswalk
 colnames(regions_crosswalk) <- c("county", "region") #change col names so they match dfs
 
 # Merge crosswalk to get regions for every county. Relocate the regions column next to the county column

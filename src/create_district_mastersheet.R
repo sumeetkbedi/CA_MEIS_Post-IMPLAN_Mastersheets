@@ -85,7 +85,7 @@ DirectDistrict <- merge(DirectDistrictOutput, DirectDistrictEmployment, by = "di
 
 # Now read in the needed files for calculating the districts' indirect and induced output and employment
 county_econ_indicators <- read.xlsx(file.path(temp_path, paste0(year, "_econ_indicators_by_county.xlsx")))
-cd_proportion <- read.csv(file.path(raw_path, "county_to_52_districts_pop_crosswalk.csv")) %>%
+cd_proportion <- read.csv(file.path(input_path, "county_to_52_districts_pop_crosswalk.csv")) %>%
   rename(county = geography)
 cd_proportion$county = tolower(cd_proportion$county)
 
