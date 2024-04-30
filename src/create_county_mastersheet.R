@@ -47,7 +47,7 @@ input_spend <- input_spend %>%
 # 1.5: Read in and wrangle employment data, should have this already aggregated by county from master analysis run through #
 input_emp <- read.xlsx(file.path(input_path, paste0(year, "_direct_employment.xlsx")), sheet = 1)
 
-#Select the needed columns - county, civilian employees, military employees, and total employees
+# Select the needed columns - county, civilian employees, military employees, and total employees
 input_emp <- input_emp %>%
   rename(input_emp = total_emp) %>%
   select(county, mili_emp, civil_emp, input_emp)
@@ -112,8 +112,7 @@ CountyIOData <- merge(CountyInputs, CountyOutputs, by = "county", all = TRUE)
 
 
 ## REGIONALIZE DATA ##
-regions_crosswalk <- read.xlsx(file.path(input_path, paste0("County_Regions.xlsx"))) #upload regions crosswalk
-colnames(regions_crosswalk) <- c("county", "region") #change col names so they match dfs
+regions_crosswalk <- read.csv(file.path(input_path, paste0("County_Regions.csv")), fileEncoding = "UTF-8-BOM") #upload regions crosswalk
 
 # Merge crosswalk to get regions for every county. Relocate the regions column next to the county column
 CountyIOData <- merge(CountyIOData, regions_crosswalk, by = ("county"), all = TRUE)
@@ -139,7 +138,7 @@ labor_force_county <- labor_force_county %>% #select only needed columns
   select(COUNTY, EMPLOYMENT)  %>%
   rename(county = COUNTY, employment = EMPLOYMENT)
 
-# merge region crosswalk with labor force data. Get regional totals
+# Merge region crosswalk with labor force data. Get regional totals
 labor_force_county <- merge(labor_force_county, regions_crosswalk, by = ("county"), all = TRUE) 
 
 regions_labor_force_data <- labor_force_county %>%
@@ -240,7 +239,7 @@ industry_Regionsag <- industry_output %>%
   mutate(county = "REGION") %>% #re-add county name but set them all to Region
   relocate(county, .before = region) #move columns around for consistency
 
-#Vertically merge regionalized data with industries by impact data
+# Vertically merge regionalized data with industries by impact data
 industry_output <- rbind(industry_output, industry_Regionsag)
 
 
@@ -272,10 +271,10 @@ employment_Regionsag <- industry_employment %>%
   mutate(county = "REGION") %>% #re-add county name but set them all to Region
   relocate(county, .before = region) #move columns around for consistency
 
-#Vertically merge regionalized data with industries by imact data
+# Vertically merge regionalized data with industries by imact data
 industry_employment <- rbind(industry_employment, employment_Regionsag)
 
 
-## FINAL STEPS: create list with dataframes, and write list into file. All done! ##
+## FINAL STEPS: create list with needed dataframes, and write list into file. All done! ##
 multisheetlist <- list(InputOutput = CountyIOData, IndustryOutput = industry_output, IndustryEmployment = industry_employment)
 write.xlsx(multisheetlist, file.path(output_path, paste0(year, "_county_input_output_data.xlsx")))
