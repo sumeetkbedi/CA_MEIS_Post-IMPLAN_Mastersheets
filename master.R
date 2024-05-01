@@ -10,6 +10,7 @@ rm(list = ls(all.names = TRUE))
 library(openxlsx)
 library(readxl) 
 library(tidyverse)
+library(censusapi)
 
 ## Load Parameters ##
 source("parameters.R")
