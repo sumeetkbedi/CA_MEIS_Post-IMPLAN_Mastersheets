@@ -3,9 +3,10 @@
 ## PART 1: INPUT DATA ##
 # 1.1: Start with USAspending - read in cleaned contracts and grants data #
 contracts <- read.csv(file.path(input_path, paste0(f_year, c_file))) %>%
-  filter(awarding_agency_name != "DEPARTMENT OF ENERGY (DOE)")
+  filter(awarding_agency_name != "Department of Energy")
+
 grants <- read.csv(file.path(input_path, paste0(f_year, g_file))) %>%
-  filter(awarding_agency_name != "DEPARTMENT OF ENERGY (DOE)")
+  filter(awarding_agency_name != "Department of Energy")
 
 # Aggregate the dataframes by district, rename columns, and then bring the dataframes together. Keep the usaspending total
 contracts <- aggregate(contracts$spending, by = list(contracts$recipient_congressional_district), FUN = sum)
