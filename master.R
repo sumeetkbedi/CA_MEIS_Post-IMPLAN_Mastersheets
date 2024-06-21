@@ -3,7 +3,7 @@
 ## Clear Environment ##
 rm(list = ls(all.names = TRUE))
 
-## Set Working Directory ##
+## Set Working Directory (if needed) ##
 
 
 ## Load Libraries ##
