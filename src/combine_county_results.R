@@ -7,7 +7,7 @@ econ_indic_files <- list.files(file.path(implan_res_c, econ_indic_path), csv_pat
 # Create a list of county names as well
 counties <- gsub(year, "", 
                  gsub(econ_ind_csv, "",
-                      gsub(inv, "", econ_indic_files)))
+                      gsub(inv, "", econ_indic_files), ignore.case = T))
 counties <- str_trim(counties)
 
 # Define indices to find the "inverse" and "regular" model data sheets
@@ -22,7 +22,7 @@ reg_temp <- NULL
 reg_temp <- result_loop(reg_ind, reg_temp, counties, implan_res_c, econ_indic_path, econ_indic_files)
 inv_temp <- result_loop(inv_ind, inv_temp, counties, implan_res_c, econ_indic_path, econ_indic_files)
 
-# Change the "NAs" in the dataframes to be "Total"
+# Change the blanks in the dataframes to be "Total"
 reg_temp$Impact[reg_temp$Impact == ""] <- "Total"
 inv_temp$Impact[inv_temp$Impact == ""] <- "Total"
 
@@ -36,7 +36,7 @@ colnames(econ_indic_counties) <- c("county", "impact", "employment", "labor_inco
 econ_indic_counties <- gsub_loop(econ_indic_counties, 3:10)
 
 econ_indic_counties <- econ_indic_counties %>%
-  mutate_at(3:last_col(), ~ as.numeric(.)) %>%
+  mutate_at(3:10, ~ as.numeric(.)) %>%
   mutate(total_employment = employment + in_employment, total_labor_income = labor_income + in_labor_income,
          total_value_added = value_added + in_value_added, total_output = output + in_output)
 
@@ -51,7 +51,7 @@ tax_res_files <- list.files(file.path(implan_res_c, tax_res_path), csv_pat)
 # Create a list of county names as well
 counties <- gsub(year, "", 
                  gsub(tax_res_csv, "",
-                      gsub(inv, "", tax_res_files)))
+                      gsub(inv, "", tax_res_files), ignore.case = T))
 counties <- str_trim(counties)
 
 # Define indices to find the "inverse" and "regular" model data sheets
@@ -71,7 +71,7 @@ reg_temp2$Impact[reg_temp2$Impact == ""] <- "Total"
 inv_temp2$Impact[inv_temp2$Impact == ""] <- "Total"
 
 # Merge the 2 dataframes into 1, and turn NA values into 0's
-tax_res_counties <- merge(reg_temp2, inv_temp2, by = c("geo", "Impact"), all = TRUE) 
+tax_res_counties <- merge(reg_temp2, inv_temp2, by = c("geo", "Impact"), all = TRUE)
 tax_res_counties[is.na(tax_res_counties)] <- 0
 
 # Rename existing columns, and run gsub loop code. Then, change columns to be numeric, and add in total columns
@@ -100,7 +100,7 @@ ind_output_files <- list.files(file.path(implan_res_c, ind_output_path), csv_pat
 # Create a list of county names as well
 counties <- gsub(year, "", 
                  gsub(out_ind_csv, "",
-                      gsub(inv, "", ind_output_files)))
+                      gsub(inv, "", ind_output_files), ignore.case = T))
 counties <- str_trim(counties)
 
 # Define indices to find the "inverse" and "regular" model data sheets
@@ -151,7 +151,7 @@ ind_emp_files <- list.files(file.path(implan_res_c, ind_emp_path), csv_pat)
 # Create a list of county names as well
 counties <- gsub(year, "", 
                  gsub(emp_ind_csv, "",
-                      gsub(inv, "", ind_emp_files)))
+                      gsub(inv, "", ind_emp_files), ignore.case = T))
 counties <- str_trim(counties)
 
 # Define indices to find the "inverse" and "regular" model data sheets

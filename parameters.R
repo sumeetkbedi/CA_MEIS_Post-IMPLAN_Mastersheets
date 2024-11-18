@@ -1,8 +1,8 @@
 ## PARAMETERS FOR RUNNING THE MASTER CODE ##
 
 # general variables and folder paths #
-f_year = "2022"
-year = "2023"
+f_year = "2023"
+year = "2024"
 state = "CALIFORNIA"
 
 output_path = file.path("output")

@@ -27,6 +27,8 @@ econ_indic_districts[is.na(econ_indic_districts)] <- 0
 colnames(econ_indic_districts) <- c("district", "impact", "employment", "labor_income", "value_added", "output")
 
 econ_indic_districts <- gsub_loop(econ_indic_districts, 3:6)
+econ_indic_districts <- econ_indic_districts %>%
+  mutate_at(3:6, ~ as.numeric(.))
 
 # Write into an Excel file - ALL DONE!
 write.xlsx(econ_indic_districts, file.path(temp_path, paste0(year, "_econ_indicators_by_district.xlsx")))
