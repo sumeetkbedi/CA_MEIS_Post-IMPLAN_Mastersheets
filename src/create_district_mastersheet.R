@@ -15,14 +15,14 @@ grants <- aggregate(grants$spending, by = list(grants$recipient_congressional_di
 colnames(contracts) <- c("district", "contract_spending")
 colnames(grants) <- c("district", "grant_spending")
 
-usaspending <- merge(contracts, grants, by = "district", all = TRUE)
+usaspending <- merge(contracts, grants, by = "district", all = T)
 usaspending[is.na(usaspending)] <- 0
 usaspending <- usaspending %>%
   mutate(event_value_spending = contract_spending + grant_spending) %>%
   select(district, event_value_spending)
 
 # 1.2: Now grab the SmartPay data by district #
-smartpay <- read_xlsx(file.path(input_path, paste0("SmartPay_FY_2022.xlsx")), sheet = 2)
+smartpay <- read_xlsx(file.path(input_path, paste0("SmartPay_FY_", f_year, ".xlsx")), sheet = 2)
 
 # Rename and select the needed columns. Then modify district columns names and drop unneeded rows
 smartpay <- smartpay %>% 
@@ -39,13 +39,13 @@ va_benefits <- aggregate(va_benefits$spending, by = list(va_benefits$congression
   rename(district = Group.1, household_spending = x)
 
 # 1.4: Aggregate all 3 spending data sources by district to get total input spending per district #
-input_spend <- Reduce(function(x,y) merge(x = x, y = y, by = "district", all = TRUE),
+input_spend <- Reduce(function(x,y) merge(x = x, y = y, by = "district", all = T),
                       list(usaspending, va_benefits, smartpay))
 input_spend <- input_spend %>% 
   mutate(input_spending = event_value_spending + household_spending + smartpay_spending)
 
 # 1.5: Read in and wrangle employment data, should have this already aggregated by district from master analysis run through #
-input_emp <- read_xlsx(file.path(input_path, paste0(year, "_direct_employment.xlsx")), sheet = 2)
+input_emp <- read_xlsx(file.path(input_path, paste0(f_year, "_direct_employment.xlsx")), sheet = 2)
 
 # Select the needed columns - district, civilian employees, military employees, and total employees
 input_emp <- input_emp %>%
@@ -53,7 +53,7 @@ input_emp <- input_emp %>%
   select(district, mili_emp, civil_emp, input_emp)
 
 # 1.6: Merge employment and spending data together to get TOTAL input spending and employment for districts. remove previous variables from environment #
-DistrictInputs <- merge(input_spend, input_emp, by = "district", all = TRUE)
+DistrictInputs <- merge(input_spend, input_emp, by = "district", all = T)
 rm(contracts, grants, usaspending, smartpay, va_benefits)
 
 
@@ -88,7 +88,7 @@ DirectDistrict <- merge(DirectDistrictOutput, DirectDistrictEmployment, by = "di
 county_econ_indicators <- read.xlsx(file.path(temp_path, paste0(year, "_econ_indicators_by_county.xlsx")))
 cd_proportion <- read.csv(file.path(input_path, "county_to_52_districts_pop_crosswalk.csv")) %>%
   rename(county = geography)
-cd_proportion$county = tolower(cd_proportion$county)
+cd_proportion$county = toupper(cd_proportion$county)
 
 # 2.2: Induced Output and Employment - grab the induced data from the County Econ Indicators file and merge them #
 InducedCountyOutput <- county_econ_indicators %>% 
@@ -106,6 +106,7 @@ InducedCountyEmp <- county_econ_indicators %>%
   select("county", "induced_county_employment")
 
 InducedCounty <- merge(InducedCountyEmp, InducedCountyOutput)
+InducedCounty$county = toupper(InducedCounty$county)
 
 # Use the cd_proportion to distribute induced county output and employment to the districts, and aggregate the results to the respective districts
 InducedDistrict <- merge(InducedCounty, cd_proportion, by = "county")
@@ -135,6 +136,7 @@ IndirectCountyEmp <- county_econ_indicators %>%
   select("county", "indirect_county_employment")
 
 IndirectCounty <- merge(IndirectCountyEmp, IndirectCountyOutput)
+IndirectCounty$county = toupper(IndirectCounty$county)
 
 # Merge in districts' direct output and employment data with counties' indirect results to calculate districts' indirect results
 IndirectCountyProp <- merge(IndirectCounty, cd_proportion, by = "county")
@@ -147,7 +149,7 @@ DistrictD_CountyI <- DistrictD_CountyI %>%
   rename(countypop2020 = population) %>%
   mutate_at(c("direct_district_fte", "direct_district_output"), as.numeric)
 
-# Calculate the districts' 2010 population, which is used to apportion the district's share in each county, and multiply this share by the districts' direct output and employment
+# Calculate the districts' 2020 population, which is used to apportion the district's share in each county, and multiply this share by the districts' direct output and employment
 DistrictPop2020 <- aggregate(DistrictD_CountyI$countypop2020, by = list(DistrictD_CountyI$district), FUN = sum) %>%
   rename(district = Group.1, districtpop2020 = x)
 
@@ -199,7 +201,7 @@ DistrictOutputs <- DistrictOutputs %>%
   relocate(total_district_output, .before = direct_district_fte)
 
 # Combine the county input and output data into 1 dataframe. Rename columns to simpler terms
-DistrictIOData <- merge(DistrictInputs, DistrictOutputs, by = "district", all = TRUE)
+DistrictIOData <- merge(DistrictInputs, DistrictOutputs, by = "district", all = T)
 colnames(DistrictIOData)[9:16] <- c("direct_output", "indirect_output", "induced_output", "total_output",
                                      "direct_fte", "indirect_fte", "induced_fte", "total_fte")
 
@@ -208,7 +210,7 @@ colnames(DistrictIOData)[9:16] <- c("direct_output", "indirect_output", "induced
 regions_crosswalk <- read.csv(file.path(input_path, paste0("District_Regions.csv")), fileEncoding = "UTF-8-BOM") #upload regions crosswalk
 
 # Merge crosswalk to get regions for every district
-DistrictIOData <- merge(DistrictIOData, regions_crosswalk, by = ("district"), all = TRUE)
+DistrictIOData <- merge(DistrictIOData, regions_crosswalk, by = ("district"), all = T)
 
 # Relocate the region column to be next to the district column
 DistrictIOData <- DistrictIOData %>%
@@ -226,7 +228,7 @@ Regionsag <- DistrictIOData %>%
 DistrictIOData <- rbind(DistrictIOData, Regionsag)
 
 
-## UTILIZE CENSUS DATA TO GET EACH DISTRICT'S AND REGION'S EMPLOYMENT AND POPULATION NUMBERs ##
+## UTILIZE CENSUS DATA TO GET EACH DISTRICT'S AND REGION'S EMPLOYMENT AND POPULATION NUMBERS ##
 
 # Read in variables needed to do census API call
 Sys.setenv(CENSUS_KEY = c_key)
@@ -242,35 +244,35 @@ regionin_call = paste0(state_call, "+congressional district:", dist_list)
 
 # Run API calls to get population and employment data from Census ACS. Clean up data as needed
 # DISTRICTS' POPULATION #
-districts_pop_22 <- getCensus(
+districts_pop <- getCensus(
   name = "acs/acs5",
   vintage = c_year, 
   vars = c("NAME", "B01003_001E"), 
   region = "county (or part):*", 
   regionin = regionin_call)
 
-districts_pop_22 <- aggregate(districts_pop_22$B01003_001E, by = list(districts_pop_22$congressional_district), FUN = sum) %>%
+districts_pop <- aggregate(districts_pop$B01003_001E, by = list(districts_pop$congressional_district), FUN = sum) %>%
   rename(district = Group.1, pop = x) %>%
   mutate_if(is.character, as.numeric)
 
 # DISTRICTS' EMPLOYMENT #
-districts_emp_22 <- getCensus(
+districts_emp <- getCensus(
   name = "acs/acs5",
   vintage = c_year, 
   vars = c("NAME", "B23025_004E", "B23025_006E"), 
   region = "county (or part):*", 
   regionin = regionin_call)
 
-districts_emp_22 <- districts_emp_22 %>%
+districts_emp <- districts_emp %>%
   mutate(emp = B23025_004E + B23025_006E)
 
-districts_emp_22 <- aggregate(districts_emp_22$emp, by = list(districts_emp_22$congressional_district), FUN = sum) %>%
+districts_emp <- aggregate(districts_emp$emp, by = list(districts_emp$congressional_district), FUN = sum) %>%
   rename(district = Group.1, emp = x) %>%
   mutate_if(is.character, as.numeric)
 
 # Merge the population and employment dataframes with the regional crosswalk
 dist_reg_pop_emp <- Reduce(function(x,y) merge(x = x, y = y, by = "district"),
-                                       list(districts_pop_22, districts_emp_22, regions_crosswalk))
+                                       list(districts_pop, districts_emp, regions_crosswalk))
 
 # Regionalize the data and vertically merge back to the data frame with regions in it
 RegionsPopEmpLandag <- dist_reg_pop_emp %>% 
