@@ -15,19 +15,19 @@ inv_ind <- grep(inv, econ_indic_files)
 reg_ind <- (1:length(econ_indic_files))[-inv_ind]
 
 # Define null variables as empty dataframes to write data into from the for loop
-inv_temp <- NULL
-reg_temp <- NULL
+temp1_inv <- NULL
+temp1_reg <- NULL
 
 # Run result_loop function to generate "regular" and "inverse" dataframes for economic indicators
-reg_temp <- result_loop(reg_ind, reg_temp, counties, implan_res_c, econ_indic_path, econ_indic_files)
-inv_temp <- result_loop(inv_ind, inv_temp, counties, implan_res_c, econ_indic_path, econ_indic_files)
+temp1_reg <- result_loop(reg_ind, temp1_reg, counties, implan_res_c, econ_indic_path, econ_indic_files)
+temp1_inv <- result_loop(inv_ind, temp1_inv, counties, implan_res_c, econ_indic_path, econ_indic_files)
 
 # Change the blanks in the dataframes to be "Total"
-reg_temp$Impact[reg_temp$Impact == ""] <- "Total"
-inv_temp$Impact[inv_temp$Impact == ""] <- "Total"
+temp1_reg$Impact[temp1_reg$Impact == ""] <- "Total"
+temp1_inv$Impact[temp1_inv$Impact == ""] <- "Total"
 
 # Merge the 2 dataframes into 1, change columns to be numeric, and turn NA values into 0's
-econ_indic_counties <- merge(reg_temp, inv_temp, by = c("geo", "Impact"), all = TRUE) 
+econ_indic_counties <- merge(temp1_reg, temp1_inv, by = c("geo", "Impact"), all = TRUE) 
 econ_indic_counties[is.na(econ_indic_counties)] <- 0
 
 # Rename existing columns, and run gsub loop code. Then, change columns to be numeric, and add in total columns
@@ -59,19 +59,19 @@ inv_ind <- grep(inv, tax_res_files)
 reg_ind <- (1:length(tax_res_files))[-inv_ind]
 
 # Define null variables as empty dataframes to write data into from the for loop
-inv_temp2 <- NULL
-reg_temp2 <- NULL
+temp2_inv <- NULL
+temp2_reg <- NULL
 
 # Run result_loop function to generate "regular" and "inverse" dataframes for tax results
-reg_temp2 <- result_loop(reg_ind, reg_temp2, counties, implan_res_c, tax_res_path, tax_res_files)
-inv_temp2 <- result_loop(inv_ind, inv_temp2, counties, implan_res_c, tax_res_path, tax_res_files)
+temp2_reg <- result_loop(reg_ind, temp2_reg, counties, implan_res_c, tax_res_path, tax_res_files)
+temp2_inv <- result_loop(inv_ind, temp2_inv, counties, implan_res_c, tax_res_path, tax_res_files)
 
 # Change the "NAs" in the dataframes to be "Total"
-reg_temp2$Impact[reg_temp2$Impact == ""] <- "Total"
-inv_temp2$Impact[inv_temp2$Impact == ""] <- "Total"
+temp2_reg$Impact[temp2_reg$Impact == ""] <- "Total"
+temp2_inv$Impact[temp2_inv$Impact == ""] <- "Total"
 
 # Merge the 2 dataframes into 1, and turn NA values into 0's
-tax_res_counties <- merge(reg_temp2, inv_temp2, by = c("geo", "Impact"), all = TRUE)
+tax_res_counties <- merge(temp2_reg, temp2_inv, by = c("geo", "Impact"), all = TRUE)
 tax_res_counties[is.na(tax_res_counties)] <- 0
 
 # Rename existing columns, and run gsub loop code. Then, change columns to be numeric, and add in total columns
@@ -108,23 +108,23 @@ inv_ind <- grep(inv, ind_output_files)
 reg_ind <- (1:length(ind_output_files))[-inv_ind]
 
 # Define null variables as empty dataframes to write data into from the for loop
-inv_temp3 <- NULL
-reg_temp3 <- NULL
+temp3_inv <- NULL
+temp3_reg <- NULL
 
 # Run result_loop function to generate "regular" and "inverse" dataframes for output by industry
-reg_temp3 <- result_loop(reg_ind, reg_temp3, counties, implan_res_c, ind_output_path, ind_output_files)
-inv_temp3 <- result_loop(inv_ind, inv_temp3, counties, implan_res_c, ind_output_path, ind_output_files)
+temp3_reg <- result_loop(reg_ind, temp3_reg, counties, implan_res_c, ind_output_path, ind_output_files)
+temp3_inv <- result_loop(inv_ind, temp3_inv, counties, implan_res_c, ind_output_path, ind_output_files)
 
 # Remove extra column and blank rows where impact is "industry display" from each dataframe
-reg_temp3 <- reg_temp3 %>%
+temp3_reg <- temp3_reg %>%
   select(-(X)) %>%
   filter(!(Impact == ind_disp))
-inv_temp3 <- inv_temp3 %>%
+temp3_inv <- temp3_inv %>%
   select(-(X)) %>%
   filter(!(Impact == ind_disp))
 
 # Merge the 2 dataframes into 1, and turn NA values into 0's
-ind_output_counties <- merge(reg_temp3, inv_temp3, by = c("geo", "Impact"), all = TRUE)
+ind_output_counties <- merge(temp3_reg, temp3_inv, by = c("geo", "Impact"), all = TRUE)
 ind_output_counties$Impact[ind_output_counties$Impact == ""] <- "Total"
 ind_output_counties[ind_output_counties == ""] <- 0
 
@@ -159,21 +159,21 @@ inv_ind <- grep(inv, ind_emp_files)
 reg_ind <- (1:length(ind_emp_files))[-inv_ind]
 
 # Define null variables as empty dataframes to write data into from the for loop
-inv_temp4 <- NULL
-reg_temp4 <- NULL
+temp4_inv <- NULL
+temp4_reg <- NULL
 
-# Run result_loop function to generate "regular" and "inverse" dataframes for economic indicators
-reg_temp4 <- result_loop(reg_ind, reg_temp4, counties, implan_res_c, ind_emp_path, ind_emp_files)
-inv_temp4 <- result_loop(inv_ind, inv_temp4, counties, implan_res_c, ind_emp_path, ind_emp_files)
+# Run result_loop function to generate "regular" and "inverse" dataframes for employment by industry
+temp4_reg <- result_loop(reg_ind, temp4_reg, counties, implan_res_c, ind_emp_path, ind_emp_files)
+temp4_inv <- result_loop(inv_ind, temp4_inv, counties, implan_res_c, ind_emp_path, ind_emp_files)
 
 # Remove extra column from each dataframe
-reg_temp4 <- reg_temp4 %>%
+temp4_reg <- temp4_reg %>%
   select(-(X))
-inv_temp4 <- inv_temp4 %>%
+temp4_inv <- temp4_inv %>%
   select(-(c(X, Impact.Employment..1...Direct.)))
 
 # Merge the 2 dataframes into 1, and turn NA values into 0's
-ind_emp_counties <- merge(reg_temp4, inv_temp4, by = c("geo", "Industry.Display"), all = TRUE)
+ind_emp_counties <- merge(temp4_reg, temp4_inv, by = c("geo", "Industry.Display"), all = TRUE)
 ind_emp_counties$Industry.Display[ind_emp_counties$Industry.Display == ""] <- "Total"
 ind_emp_counties[is.na(ind_emp_counties)] <- 0
 
@@ -189,5 +189,8 @@ ind_emp_counties <- ind_emp_counties %>%
          total_induced = induced + in_induced,
          total = reg_total + in_total)
 
-# Write into an Excel file - ALL DONE!
+# Write into an Excel file, and remove variables from environment - ALL DONE!
 write.xlsx(ind_emp_counties, file.path(temp_path, paste0(year, "_industry_employment_by_county.xlsx")))
+
+rm(econ_indic_counties, ind_emp_counties, ind_output_counties, tax_res_counties, temp1_inv, temp1_reg,
+   temp2_inv, temp2_reg, temp3_inv, temp3_reg, temp4_inv, temp4_reg)

@@ -32,3 +32,5 @@ econ_indic_districts <- econ_indic_districts %>%
 
 # Write into an Excel file - ALL DONE!
 write.xlsx(econ_indic_districts, file.path(temp_path, paste0(year, "_econ_indicators_by_district.xlsx")))
+
+rm(econ_indic_districts)
