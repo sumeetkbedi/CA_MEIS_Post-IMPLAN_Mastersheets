@@ -41,7 +41,7 @@ econ_indic_counties <- econ_indic_counties %>%
          total_value_added = value_added + in_value_added, total_output = output + in_output)
 
 # Write into an Excel file - ALL DONE!
-write.xlsx(econ_indic_counties, file.path(temp_path, paste0(year, "_econ_indicators_by_county.xlsx")))
+write.xlsx(econ_indic_counties, file.path(temp_path, paste0(year, econ_c_file)))
 
 
 ## TAX RESULTS ##
@@ -90,7 +90,7 @@ tax_res_counties <- tax_res_counties %>%
          total = reg_total + in_total)
 
 # Write into an Excel file - ALL DONE!
-write.xlsx(tax_res_counties, file.path(temp_path, paste0(year, "_tax_results_by_county.xlsx")))
+write.xlsx(tax_res_counties, file.path(temp_path, paste0(year, tax_c_file)))
 
 
 ## INDUSTRIES BY IMPACT ##
@@ -141,7 +141,7 @@ ind_output_counties <- ind_output_counties %>%
          total = reg_total + in_total)
 
 # Write into an Excel file - ALL DONE!
-write.xlsx(ind_output_counties, file.path(temp_path, paste0(year, "_industry_output_by_county.xlsx")))
+write.xlsx(ind_output_counties, file.path(temp_path, paste0(year, out_c_file)))
 
 
 ## EMPLOYMENT INDUSTRIES BY IMPACT ##
@@ -190,7 +190,7 @@ ind_emp_counties <- ind_emp_counties %>%
          total = reg_total + in_total)
 
 # Write into an Excel file, and remove variables from environment - ALL DONE!
-write.xlsx(ind_emp_counties, file.path(temp_path, paste0(year, "_industry_employment_by_county.xlsx")))
+write.xlsx(ind_emp_counties, file.path(temp_path, paste0(year, emp_c_file)))
 
 rm(econ_indic_counties, ind_emp_counties, ind_output_counties, tax_res_counties, temp1_inv, temp1_reg,
    temp2_inv, temp2_reg, temp3_inv, temp3_reg, temp4_inv, temp4_reg)

@@ -19,11 +19,20 @@ ind_output_path = file.path("industry_output")
 ind_emp_path = file.path("industry_emp")
 
 econ_ind_csv = "econ indicators.csv"
+econ_c_file = "_econ_indicators_by_county.xlsx"
+econ_d_file = "_econ_indicators_by_district.xlsx"
+
 tax_res_csv = "tax results.csv"
+tax_c_file = "_tax_results_by_county.xlsx"
+
 out_ind_csv = "industry output.csv"
+out_c_file = "_industry_output_by_county.xlsx"
+
 emp_ind_csv = "industry employment.csv"
+emp_c_file = "_industry_employment_by_county.xlsx"
 
 csv_pat = "*.csv"
+xlsx_pat = ".xlsx"
 inv = "inv"
 
 ind_disp = "Industry Display"
@@ -32,9 +41,23 @@ ind_disp = "Industry Display"
 input_path = file.path("data", "raw", "inputs")
 c_file = "_cleaned_contracts.csv"
 g_file = "_cleaned_grants.csv"
+DOE = "Department of Energy"
 
-va_direct_pay_c = "_va_benefits_by_county.csv"
-va_direct_pay_d = "_va_benefits_by_district.csv"
+s_file <- "SmartPay_FY_"
+
+va_file = "_cleaned_va_benefits.csv"
+
+emp_file <- "_direct_employment.xlsx"
+
+reg_file = "regions.xlsx"
+
+lf_file = "_EDD_labor_force_by_county.xlsx"
+
+pop_file = "_DOF_population_by_county.xlsx"
+
+ind_imp_file = "Industries by Impact Groupings.csv"
+
+final_file = "_input_output_data.xlsx"
 
 c_key = "8df2ad0b1d54d9a4a19c1d97bed2e94e44995571"
 state_fips = "06" 
