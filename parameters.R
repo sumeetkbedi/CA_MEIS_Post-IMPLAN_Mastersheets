@@ -49,6 +49,8 @@ va_file = "_cleaned_va_benefits.csv"
 
 emp_file <- "_direct_employment.xlsx"
 
+cd_pop_file <- "county_to_52_districts_pop_crosswalk.csv"
+
 reg_file = "regions.xlsx"
 
 lf_file = "_EDD_labor_force_by_county.xlsx"

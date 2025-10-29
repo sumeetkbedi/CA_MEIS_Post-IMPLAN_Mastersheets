@@ -3,10 +3,10 @@
 ## PART 1: INPUT DATA ##
 # 1.1: Start with USAspending - read in cleaned contracts and grants data #
 contracts <- read.csv(file.path(input_path, paste0(f_year, c_file))) %>%
-  filter(awarding_agency_name != "Department of Energy")
+  filter(awarding_agency_name != DOE)
 
 grants <- read.csv(file.path(input_path, paste0(f_year, g_file))) %>%
-  filter(awarding_agency_name != "Department of Energy")
+  filter(awarding_agency_name != DOE)
 
 # Aggregate the dataframes by district, rename columns, and then bring the dataframes together. Keep the usaspending total
 contracts <- aggregate(contracts$spending, by = list(contracts$recipient_congressional_district), FUN = sum)
@@ -22,19 +22,19 @@ usaspending <- usaspending %>%
   select(district, event_value_spending)
 
 # 1.2: Now grab the SmartPay data by district #
-smartpay <- read_xlsx(file.path(input_path, paste0("SmartPay_FY_", f_year, ".xlsx")), sheet = 2)
+smartpay <- read.xlsx(file.path(input_path, paste0(s_file, f_year, xlsx_pat)), sheet = 2)
 
 # Rename and select the needed columns. Then modify district columns names and drop unneeded rows
+smartpay <- smartpay[,c(7,11)]
 smartpay <- smartpay %>% 
-  rename(district = ...9, smartpay_spending = ...13) %>%
-  select(district, smartpay_spending)
+  rename(district = District, smartpay_spending = Total)
 
 smartpay <- smartpay[!(smartpay$district == "District"| smartpay$district == "Total" | is.na(smartpay$district)),]
 smartpay$district <- as.integer(smartpay$district)
 smartpay$smartpay_spending <- as.numeric(smartpay$smartpay_spending)
 
 # 1.3: Read in and wrangle VA direct payments data #
-va_benefits <- read.csv(file.path(input_path, paste0(f_year, "_cleaned_va_benefits.csv")))
+va_benefits <- read.csv(file.path(input_path, paste0(f_year, va_file)))
 va_benefits <- aggregate(va_benefits$spending, by = list(va_benefits$congressional_district), FUN = sum) %>%
   rename(district = Group.1, household_spending = x)
 
@@ -45,7 +45,7 @@ input_spend <- input_spend %>%
   mutate(input_spending = event_value_spending + household_spending + smartpay_spending)
 
 # 1.5: Read in and wrangle employment data, should have this already aggregated by district from master analysis run through #
-input_emp <- read_xlsx(file.path(input_path, paste0(f_year, "_direct_employment.xlsx")), sheet = 2)
+input_emp <- read.xlsx(file.path(input_path, paste0(f_year, emp_file)), sheet = 2)
 
 # Select the needed columns - district, civilian employees, military employees, and total employees
 input_emp <- input_emp %>%
@@ -54,13 +54,13 @@ input_emp <- input_emp %>%
 
 # 1.6: Merge employment and spending data together to get TOTAL input spending and employment for districts. remove previous variables from environment #
 DistrictInputs <- merge(input_spend, input_emp, by = "district", all = T)
-rm(contracts, grants, usaspending, smartpay, va_benefits)
+rm(contracts, grants, usaspending, smartpay, va_benefits, input_spend, input_emp)
 
 
 ## PART 2: OUTPUT DATA ##
 
 # Read in the District Economic Indicators Excel sheet for direct output and employment 
-district_econ_indicators <- read.xlsx(file.path(temp_path, paste0(year, "_econ_indicators_by_district.xlsx")))
+district_econ_indicators <- read.xlsx(file.path(temp_path, paste0(year, econ_d_file)))
 
 # 2.1: Direct Output AND Employment - use "district_econ_indicators" and select the district, direct impact, output, and employment columns #
 DirectDistrictOutput <- district_econ_indicators %>% 
@@ -69,7 +69,7 @@ DirectDistrictOutput <- district_econ_indicators %>%
   filter(impact == "Direct") %>%
   rename(direct_district_output = output) %>%
   select("district", "direct_district_output")
-DirectDistrictOutput$district <- as.numeric(gsub("[a-zA-Z ]", "",
+DirectDistrictOutput$district <- as.integer(gsub("[a-zA-Z ]", "",
                                                  gsub("-", "", DirectDistrictOutput$district)))
 
 DirectDistrictEmployment <- district_econ_indicators %>% 
@@ -78,15 +78,15 @@ DirectDistrictEmployment <- district_econ_indicators %>%
   filter(impact == "Direct") %>%
   rename(direct_district_fte = employment) %>%
   select("district", "direct_district_fte")
-DirectDistrictEmployment$district <- as.numeric(gsub("[a-zA-Z ]", "",
+DirectDistrictEmployment$district <- as.integer(gsub("[a-zA-Z ]", "",
                                                      gsub("-", "", DirectDistrictEmployment$district)))
 
 DirectDistrict <- merge(DirectDistrictOutput, DirectDistrictEmployment, by = "district") %>%
-  mutate_at(c("direct_district_fte", "direct_district_output"), as.numeric)
+  mutate_at(c(2:3), as.numeric)
 
 # Now read in the needed files for calculating the districts' indirect and induced output and employment
-county_econ_indicators <- read.xlsx(file.path(temp_path, paste0(year, "_econ_indicators_by_county.xlsx")))
-cd_proportion <- read.csv(file.path(input_path, "county_to_52_districts_pop_crosswalk.csv")) %>%
+county_econ_indicators <- read.xlsx(file.path(temp_path, paste0(year, econ_c_file)))
+cd_proportion <- read.csv(file.path(input_path, cd_pop_file)) %>%
   rename(county = geography)
 cd_proportion$county = toupper(cd_proportion$county)
 
@@ -190,11 +190,7 @@ IndirectDistrict <- merge(IndirectDistrictOutput, IndirectDistrictEmployment)
 # 2.4: Combine all data frames into one #
 DistrictOutputs <- Reduce(function(x,y) merge(x = x, y = y, by = "district"),
                           list(DirectDistrict, IndirectDistrict, InducedDistrict))
-DistrictOutputs <- DistrictOutputs %>%
-  relocate(indirect_district_output, .after = direct_district_output) %>%
-  relocate(induced_district_output, .after = indirect_district_output) %>%
-  relocate(indirect_district_fte, .after = direct_district_fte) %>%
-  relocate(induced_district_fte, .after = indirect_district_fte)
+DistrictOutputs <- DistrictOutputs[c(1,2,4,6,3,5,7)] 
 DistrictOutputs <- DistrictOutputs %>%
   mutate(total_district_output = direct_district_output + indirect_district_output + induced_district_output,
          total_district_fte = direct_district_fte + indirect_district_fte + induced_district_fte) %>%
@@ -204,28 +200,10 @@ DistrictOutputs <- DistrictOutputs %>%
 DistrictIOData <- merge(DistrictInputs, DistrictOutputs, by = "district", all = T)
 colnames(DistrictIOData)[9:16] <- c("direct_output", "indirect_output", "induced_output", "total_output",
                                      "direct_fte", "indirect_fte", "induced_fte", "total_fte")
-
-
-## REGIONALIZE DATA ##
-regions_crosswalk <- read.csv(file.path(input_path, paste0("District_Regions.csv")), fileEncoding = "UTF-8-BOM") #upload regions crosswalk
-
-# Merge crosswalk to get regions for every district
-DistrictIOData <- merge(DistrictIOData, regions_crosswalk, by = ("district"), all = T)
-
-# Relocate the region column to be next to the district column
-DistrictIOData <- DistrictIOData %>%
-  relocate(region, .after = district)
-
-# Create new DF with data aggregated by region
-Regionsag <- DistrictIOData %>% 
-  select(-(district)) %>% #get rid of district column (it breaks the code below)
-  group_by(region) %>% #group by region
-  summarise_each(funs(sum)) %>% #sum the columns
-  mutate(district = "REGION") %>% #make district name "region"
-  relocate(district, .before = region) #move the region column
-
-# Vertically merge data aggregated by region with the districts IO data
-DistrictIOData <- rbind(DistrictIOData, Regionsag)
+rm(cd_proportion, county_econ_indicators, CountyDistrictDirectEmploymentSum, CountyDistrictDirectOutputSum,
+   DirectDistrict, DirectDistrictEmployment, DirectDistrictOutput, district_econ_indicators, DistrictD_CountyI,
+   DistrictPop2020, IndirectCounty, IndirectCountyEmp, IndirectCountyOutput, IndirectCountyProp, IndirectDistrict,
+   IndirectDistrictEmployment, IndirectDistrictOutput, InducedCounty, InducedCountyEmp, InducedCountyOutput, InducedDistrict)
 
 
 ## UTILIZE CENSUS DATA TO GET EACH DISTRICT'S AND REGION'S EMPLOYMENT AND POPULATION NUMBERS ##
@@ -270,25 +248,11 @@ districts_emp <- aggregate(districts_emp$emp, by = list(districts_emp$congressio
   rename(district = Group.1, emp = x) %>%
   mutate_if(is.character, as.numeric)
 
-# Merge the population and employment dataframes with the regional crosswalk
-dist_reg_pop_emp <- Reduce(function(x,y) merge(x = x, y = y, by = "district"),
-                                       list(districts_pop, districts_emp, regions_crosswalk))
+# Merge the population and employment dataframes, and then merge those to the final IO data to have it all in one
+dist_pop_emp <- merge(districts_pop, districts_emp, by = "district")
+colnames(dist_pop_emp)[2] <- "population"
 
-# Regionalize the data and vertically merge back to the data frame with regions in it
-RegionsPopEmpLandag <- dist_reg_pop_emp %>% 
-  select(-(district)) %>%
-  group_by(region) %>% #group by rollup, then district
-  summarise_each(funs(sum)) %>% #sum the columns
-  mutate(district = "REGION") %>%
-  relocate(district, .before = region)
-
-dist_reg_pop_emp <- rbind(dist_reg_pop_emp, RegionsPopEmpLandag)
-dist_reg_pop_emp <- dist_reg_pop_emp %>%
-  relocate(region, .after = district) %>%
-  rename(population = pop)
-
-# Merge this data frame into a new, final IO data frame to have it all in one
-DistrictIOData <- full_join(DistrictIOData, dist_reg_pop_emp)
+DistrictIOData <- full_join(DistrictIOData, dist_pop_emp)
 
 # Calculate spending per 100k, output per 100k, employment per 100k (both input and output), % district employment, and % population
 DistrictIOData <- DistrictIOData %>%
@@ -298,14 +262,54 @@ DistrictIOData <- DistrictIOData %>%
          fte_per_100k = (total_fte / population) * 100000,
          percent_district_emp = total_fte / emp)
 
-DistrictIOData <- DistrictIOData %>%
-  relocate(population, .after = region) %>%
-  relocate(input_spending_per_100k, .after = input_spending) %>%
-  relocate(input_emp_per_100k, .after = input_emp) %>%
-  relocate(econ_output_per_100k, .after = total_output) %>%
-  relocate(fte_per_100k, .after = total_fte) %>%
-  select(-(c(emp)))
+DistrictIOData <- DistrictIOData[c(1,17,2:5,19,6:8,20,9:12,21,13:16,22:23)]
 
 
 ## FINAL STEP: write data into file. All done! ##
-write.xlsx(DistrictIOData, file.path(output_path, paste0(year, "_district_input_output_data.xlsx")))
+write.xlsx(DistrictIOData, file.path(output_path, paste0(year, "_district", final_file)))
+
+
+
+
+
+#### DEPRECATED CODE FOR REGIONALIZING DISTRICTS ####
+# ## REGIONALIZE DATA ##
+# regions_crosswalk <- read.csv(file.path(input_path, paste0("District_Regions.csv")), fileEncoding = "UTF-8-BOM") #upload regions crosswalk
+# 
+# # Merge crosswalk to get regions for every district
+# DistrictIOData <- merge(DistrictIOData, regions_crosswalk, by = ("district"), all = T)
+# 
+# # Relocate the region column to be next to the district column
+# DistrictIOData <- DistrictIOData %>%
+#   relocate(region, .after = district)
+# 
+# # Create new DF with data aggregated by region
+# Regionsag <- DistrictIOData %>% 
+#   select(-(district)) %>% #get rid of district column (it breaks the code below)
+#   group_by(region) %>% #group by region
+#   summarise_each(funs(sum)) %>% #sum the columns
+#   mutate(district = "REGION") %>% #make district name "region"
+#   relocate(district, .before = region) #move the region column
+# 
+# # Vertically merge data aggregated by region with the districts IO data
+# DistrictIOData <- rbind(DistrictIOData, Regionsag)
+
+# # Merge the population and employment dataframes with the regional crosswalk
+# dist_reg_pop_emp <- Reduce(function(x,y) merge(x = x, y = y, by = "district"),
+#                            list(districts_pop, districts_emp, regions_crosswalk))
+# 
+# # Regionalize the data and vertically merge back to the data frame with regions in it
+# RegionsPopEmpLandag <- dist_reg_pop_emp %>% 
+#   select(-(district)) %>%
+#   group_by(region) %>% #group by rollup, then district
+#   summarise_each(funs(sum)) %>% #sum the columns
+#   mutate(district = "REGION") %>%
+#   relocate(district, .before = region)
+# 
+# dist_reg_pop_emp <- rbind(dist_reg_pop_emp, RegionsPopEmpLandag)
+# dist_reg_pop_emp <- dist_reg_pop_emp %>%
+#   relocate(region, .after = district) %>%
+#   rename(population = pop)
+# 
+# # Merge this data frame into a new, final IO data frame to have it all in one
+# DistrictIOData <- full_join(DistrictIOData, dist_reg_pop_emp)
